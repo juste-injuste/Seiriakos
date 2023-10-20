@@ -62,15 +62,11 @@ int main()
   std::cout << something.display("something");
   
   std::vector<uint8_t> serialized = something.serialize();
+
   Seiriakos::print_bytes(serialized.data(), serialized.size());
 
   Something decoded;
   decoded.deserialize(serialized.data(), serialized.size());
 
-  std::cout << "\nthing:\n";  
-  std::cout << "a:   " << decoded.a   << '\n';
-  std::cout << "b:   " << decoded.b   << '\n';
-  std::cout << "c:   " << decoded.c   << '\n';
-  std::cout << "d.a: " << decoded.d.a << '\n';
-  std::cout << "e:   " << decoded.e   << '\n';
+  std::cout << decoded.display("something decoded");
 }
