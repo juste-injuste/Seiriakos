@@ -6,7 +6,7 @@
 
 struct Something final : public Seiriakos::Serializable
 {
-  std::set<std::string, int> a;
+  std::map<std::string, int> a;
   uint32_t b;
   
   std::string display(const char* name)
@@ -17,14 +17,14 @@ struct Something final : public Seiriakos::Serializable
     for (const auto key_value : a)
     {
       // stream << "    key: " << key_value.first << ", value: " << key_value.second << '\n';
-      stream << "    key: " << key_value << '\n';
+      // stream << "    key: " << key_value << '\n';
     }
     stream << "  b:\n";
     stream << "    " << b << '\n';
     return stream.str();
   }
 
-  SEIRIAKOS_SEQUENCE(a, b);
+  SEIRIAKOS_SEQUENCE(a);
 };
 
 int main()
@@ -46,6 +46,8 @@ int main()
   // something.a.insert("f");
   // something.a.insert("f");
   something.b = 0xDEADBEEF;
+
+  Seiriakos::Backend::data_serialization_implementation(something.a);
 
   std::cout << something.display("something");
   
