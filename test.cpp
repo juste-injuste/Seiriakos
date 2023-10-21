@@ -1,17 +1,21 @@
 #include <iostream>
-#include <type_traits>
-
-// Define a generic has_data_and_size struct
-
-// Example class with data() and size() methods
-class MyClass {
-  public:
-    int* data() { return nullptr; }
-    size_t size() { return 0; }
-};
+#include <cmath>
 
 int main() {
-  std::cout << "MyClass " << (has_data_and_size<MyClass>::value ? "has" : "does not have") << " data() and size() methods." << std::endl;
+    uint64_t size = UINT32_MAX + 10ull;
 
-  return 0;
+    uint8_t bytes_used;
+    if (size <= UINT8_MAX)
+    bytes_used = 1;
+    else if (size <= UINT16_MAX)
+    bytes_used = 2;
+    else if (size <= UINT32_MAX)
+    bytes_used = 4;
+    else bytes_used = 8;
+
+    uint8_t bytes_test = 8 - (size <= UINT8_MAX) - 2*(size <= UINT16_MAX) - 4*(size <= UINT32_MAX);
+
+    std::cout << "true: " << int(bytes_used) << '\n';
+    std::cout << "test: " << int(bytes_test) << '\n';
+    return 0;
 }
