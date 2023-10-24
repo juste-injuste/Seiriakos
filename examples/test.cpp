@@ -1,4 +1,4 @@
-#define LOGGING
+#define SEIRIAKOS_LOGGING
 #include "../include/Seiriakos.hpp"
 #include <iostream>
 #include <cstdint>
