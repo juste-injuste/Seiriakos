@@ -33,7 +33,26 @@ SOFTWARE.
 -----description------------------------------------------------------------------------------------
 
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
-deserialize objects. do #define SEIRIAKOS_THREADSAFE before including to enable thread-safety.
+deserialize objects. do #define SEIRIAKOS_NOT_THREADSAFE before including to disable thread-safety.
+
+currently supported types:
+  all fundamental integer types
+  all fundamental floating point types
+
+  std::basic_string
+  std::vector
+  std::array
+  std::unordered_map
+  std::map
+  std::unordered_set
+  std::set
+  std::pair
+  std::list
+  std::deque
+  std::unordered_multimap
+  std::multimap
+  std::unordered_multiset
+  std::multiset
 
 -----inclusion guard------------------------------------------------------------------------------*/
 #ifndef SEIRIAKOS_H
@@ -47,6 +66,7 @@ deserialize objects. do #define SEIRIAKOS_THREADSAFE before including to enable 
 #include <iomanip>     // for std::setw, std::setfill, std::hex
 #include <ios>         // for std::uppercase
 //-------------------
+#include <complex>
 #include <vector>
 #include <list>
 #include <deque>
@@ -56,6 +76,7 @@ deserialize objects. do #define SEIRIAKOS_THREADSAFE before including to enable 
 #include <map>
 #include <unordered_set>
 #include <set>
+#include <tuple>
 //---Seiriakos library------------------------------------------------------------------------------
 namespace Seiriakos
 {
@@ -66,13 +87,14 @@ namespace Seiriakos
     const unsigned long PATCH = 000;
     constexpr unsigned long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
   }
-  
+
   namespace Global
   {
     std::ostream out{std::cout.rdbuf()}; // output ostream
     std::ostream err{std::cerr.rdbuf()}; // error ostream
+    std::ostream log{std::clog.rdbuf()}; // logging ostream
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   inline namespace Frontend
   {
     // abstract class to access serialization capabilities
@@ -80,119 +102,141 @@ namespace Seiriakos
 
     // macro to implement quickly serialization/deserialization from a list of variables
     #define SEIRIAKOS_SEQUENCE(...)
-
+    
     // print all bytes of an array of bytes
-    void print_bytes(const uint8_t data[], const size_t size, const bool print_header = true);
+    inline void print_bytes(const uint8_t data[], const size_t size, const bool print_header = true);
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   namespace Backend
   {
     #ifdef SEIRIAKOS_NOT_THREADSAFE
       static std::vector<uint8_t> buffer;
       static size_t front_of_buffer;
+      static bool error_flag;
     #else
       static thread_local std::vector<uint8_t> buffer;
       static thread_local size_t front_of_buffer;
+      static thread_local bool error_flag;
     #endif
 
-    template<class M>
-    struct is_map_like : std::false_type {};
+    void error(const char* message) noexcept;
 
-    template<class K, class T>
-    struct is_map_like<std::map<K, T>> : std::true_type {};
+    class IndentLog
+    {
+      public:
+        inline IndentLog(const std::string& text) noexcept
+        {
+          std::clog << (indentation += "  ") << text << std::endl;
+        }
 
-    template<class K, class T>
-    struct is_map_like<std::multimap<K, T>> : std::true_type {};
+        inline ~IndentLog() noexcept
+        {
+          indentation.resize(indentation.length() - 2);
+        }
+      private:
+        static std::string indentation;
+    };
+    std::string IndentLog::indentation;
 
-    template<class K, class T>
-    struct is_map_like<std::unordered_map<K, T>> : std::true_type {};
-
-    template<class K, class T>
-    struct is_map_like<std::unordered_multimap<K, T>> : std::true_type {};
-
-    template<class S>
-    struct is_set_like : std::false_type {};
-
-    template<class K>
-    struct is_set_like<std::set<K>> : std::true_type {};
-
-    template<class K>
-    struct is_set_like<std::multiset<K>> : std::true_type {};
-
-    template<class K>
-    struct is_set_like<std::unordered_set<K>> : std::true_type {};
-
-    template<class K>
-    struct is_set_like<std::unordered_multiset<K>> : std::true_type {};
+    #ifdef LOGGING
+      #define LOG(text) Backend::IndentLog inde_nt_l_og_{text}
+    #else
+      #define LOG(text)
+    #endif
 
     template<typename T>
-    using is_Serializable = std::is_base_of<Serializable, T>;
-
-    template<class M>
-    using enable_if_maplike = typename std::enable_if<is_map_like<M>::value>::type;
-
-    template<class S>
-    using enable_if_setlike = typename std::enable_if<is_set_like<S>::value>::type;
-
-    template <typename T>
-    struct is_generic : std::conditional<
-      is_Serializable<T>::value ||
-      is_map_like<T>::value ||
-      is_set_like<T>::value,
-      std::false_type, 
-      std::true_type
-    >::type {};
-
-    // template<typename T>
-    // using enable_if_generic = typename std::enable_if<is_generic<T>::value>::type;
-
-    void data_serialization_implementation(const Serializable& data);
-    void data_deserialization_implementation(Serializable& data);
+    using disable_if_Serializable = typename std::enable_if<!std::is_base_of<Serializable, T>::value>::type;
 
     template<typename T>
-    void data_serialization_implementation(const T& data, is_generic<T>* = nullptr);
-    template<typename T>
-    void data_deserialization_implementation(T& data, is_generic<T>* = nullptr);
+    std::string underlying_name();
 
-    void size_serialization_implementation(const size_t& size);
-    void size_deserialization_implementation(size_t& size);
+    inline void serialization(const Serializable& data);
+    inline void deserialization(Serializable& data);
 
-    template<typename T>
-    void data_serialization_implementation(const std::basic_string<T>& string);
-    template<typename T>
-    void data_deserialization_implementation(std::basic_string<T>& string);
+    template<typename T, typename = disable_if_Serializable<T>>
+    inline void serialization(const T& data);
+    template<typename T, typename = disable_if_Serializable<T>>
+    inline void deserialization(T& data);
 
-    template<typename T>
-    void data_serialization_implementation(const std::vector<T>& data);
-    template<typename T>
-    void data_deserialization_implementation(std::vector<T>& data);
+    inline void size_serialization(const size_t& size);
+    inline void size_deserialization(size_t& size);
 
     template<typename T>
-    void data_serialization_implementation(const std::list<T>& data);
+    inline void serialization(const std::complex<T>& complex);
     template<typename T>
-    void data_deserialization_implementation(std::list<T>& data);
+    inline void deserialization(std::complex<T>& complex);
 
     template<typename T>
-    void data_serialization_implementation(const std::deque<T>& data);
+    inline void serialization(const std::basic_string<T>& string);
     template<typename T>
-    void data_deserialization_implementation(std::deque<T>& data);
+    inline void deserialization(std::basic_string<T>& string);
+
+    template<typename T>
+    inline void serialization(const std::vector<T>& vector);
+    template<typename T>
+    inline void deserialization(std::vector<T>& vector);
+
+    template<typename T>
+    inline void serialization(const std::list<T>& list);
+    template<typename T>
+    inline void deserialization(std::list<T>& list);
+
+    template<typename T>
+    inline void serialization(const std::deque<T>& deque);
+    template<typename T>
+    inline void deserialization(std::deque<T>& deque);
 
     template<typename T1, typename T2>
-    void data_serialization_implementation(const std::pair<T1, T2>& data);
+    inline void serialization(const std::pair<T1, T2>& pair);
     template<typename T1, typename T2>
-    void data_deserialization_implementation(std::pair<T1, T2>& data);
+    inline void deserialization(std::pair<T1, T2>& pair);
 
-    template<class M>
-    void data_serialization_implementation(M& data, enable_if_maplike<M>* = nullptr);
-    template<class M>
-    void data_deserialization_implementation(M& data, enable_if_maplike<M>* = nullptr);
+    template<typename T1, typename T2>
+    inline void serialization(const std::unordered_map<T1, T2>& unordered_map);
+    template<typename T1, typename T2>
+    inline void deserialization(std::unordered_map<T1, T2>& unordered_map);
 
-    template<class S>
-    void data_serialization_implementation(const S& data, enable_if_setlike<S>* = nullptr);
-    template<class S>
-    void data_deserialization_implementation(S& data, enable_if_setlike<S>* = nullptr);
+    template<typename T1, typename T2>
+    inline void serialization(const std::unordered_multimap<T1, T2>& unordered_multimap);
+    template<typename T1, typename T2>
+    inline void deserialization(std::unordered_multimap<T1, T2>& unordered_multimap);
+
+    template<typename T1, typename T2>
+    inline void serialization(const std::map<T1, T2>& map);
+    template<typename T1, typename T2>
+    inline void deserialization(std::map<T1, T2>& map);
+
+    template<typename T1, typename T2>
+    inline void serialization(const std::multimap<T1, T2>& multimap);
+    template<typename T1, typename T2>
+    inline void deserialization(std::multimap<T1, T2>& multimap);
+
+    template<typename T>
+    inline void serialization(const std::unordered_set<T>& unordered_set);
+    template<typename T>
+    inline void deserialization(std::unordered_set<T>& unordered_set);
+
+    template<typename T>
+    inline void serialization(const std::unordered_multiset<T>& unordered_multiset);
+    template<typename T>
+    inline void deserialization(std::unordered_multiset<T>& unordered_multiset);
+
+    template<typename T>
+    inline void serialization(const std::set<T>& set);
+    template<typename T>
+    inline void deserialization(std::set<T>& set);
+
+    template<typename T>
+    inline void serialization(const std::multiset<T>& multiset);
+    template<typename T>
+    inline void deserialization(std::multiset<T>& multiset);
+
+    template<typename... T>
+    inline void serialization(const std::tuple<T...>& tuple);
+    template<typename... T>
+    inline void deserialization(std::multiset<T...>& tuple);
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   inline namespace Frontend
   {
     class Serializable
@@ -206,42 +250,25 @@ namespace Seiriakos
         // serialization/deserialization sequence (provided by the inheriting class)
         virtual void serialization_sequence() const noexcept = 0;
         virtual void deserialization_sequence() noexcept = 0;
-
         // recursive calls to appropriate data_serialization/data_deserialization overloads
-        template<typename T, typename... T_n>
-        inline void data_serialization(const T& data, const T_n&... data_n) const noexcept;
-        inline void data_serialization() const noexcept {};
-        template<typename T, typename... T_n>
-        inline void data_deserialization(T& data, T_n&... data_n) noexcept;
-        inline void data_deserialization() noexcept {};
-
-        friend void Backend::data_serialization_implementation(const Serializable& data);
-        friend void Backend::data_deserialization_implementation(Serializable& data);
-      private:
-        // issue error message
-        inline void error(const char* message) const noexcept;
-        #ifdef SEIRIAKOS_NOT_THREADSAFE
-          static bool error_flag;
-        #else
-          static thread_local bool error_flag;
-        #endif
+        template<typename T, typename... Tn>
+        inline void serialization(const T& data, const Tn&... data_n) const noexcept;
+        inline void serialization() const noexcept {};
+        template<typename T, typename... Tn>
+        inline void deserialization(T& data, Tn&... data_n) noexcept;
+        inline void deserialization() noexcept {};
+      friend void Backend::serialization(const Serializable& data);
+      friend void Backend::deserialization(Serializable& data);
     };
-
-    // Serializable static member initializations
-    #ifdef SEIRIAKOS_NOT_THREADSAFE
-      bool Serializable::error_flag;
-    #else
-      thread_local bool Serializable::error_flag;
-    #endif
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   inline namespace Frontend
   {
     std::vector<uint8_t> Serializable::serialize() const noexcept
     {
       Backend::buffer.clear(); // initialize buffer
 
-      // call the implementation provided by the inheriting class
+      // call the sequence provided by the inheriting class
       serialization_sequence();
 
       return Backend::buffer; // return serialized data
@@ -251,37 +278,31 @@ namespace Seiriakos
     {
       Backend::buffer.assign(data, data + size); // initialize buffer with data
       Backend::front_of_buffer = 0;              // initialize front of buffer
-      error_flag      = false;                   // initialize error flag
+      Backend::error_flag      = false;          // initialize error flag
 
-      // call the implementation provided by the inheriting class
+      // call the sequence provided by the inheriting class
       deserialization_sequence();
-      
+
       if (Backend::front_of_buffer != Backend::buffer.size())
       {
-        error("buffer is not empty, serialization/deserialization sequence mismatch");
+        Backend::error("buffer is not empty, serialization/deserialization sequence mismatch");
       }
 
-      return error_flag;
+      return Backend::error_flag;
     }
 
-    template<typename T, typename... T_n>
-    void Serializable::data_serialization(const T& data, const T_n&... data_n) const noexcept
+    template<typename T, typename... Tn>
+    void Serializable::serialization(const T& data, const Tn&... data_n) const noexcept
     {
-      Backend::data_serialization_implementation(data);
-      data_serialization(data_n...);
+      Backend::serialization(data);
+      serialization(data_n...);
     }
 
-    template<typename T, typename... T_n>
-    void Serializable::data_deserialization(T& data, T_n&... data_n) noexcept
+    template<typename T, typename... Tn>
+    void Serializable::deserialization(T& data, Tn&... data_n) noexcept
     {
-      Backend::data_deserialization_implementation(data);
-      data_deserialization(data_n...);
-    }
-
-    void Serializable::error(const char* message) const noexcept
-    {
-      error_flag = true;
-      Global::err << "error: Serializable: " << message << std::endl;
+      Backend::deserialization(data);
+      deserialization(data_n...);
     }
 
     #undef  SEIRIAKOS_SEQUENCE
@@ -289,52 +310,78 @@ namespace Seiriakos
       private:                                                \
         void serialization_sequence() const noexcept override \
         {                                                     \
-          data_serialization(__VA_ARGS__);                    \
+          serialization(__VA_ARGS__);                         \
         }                                                     \
         void deserialization_sequence() noexcept override     \
         {                                                     \
-          data_deserialization(__VA_ARGS__);                  \
+          deserialization(__VA_ARGS__);                       \
         }
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   namespace Backend
   {
-    void data_serialization_implementation(const Serializable& data)
+    void error(const char* message) noexcept
     {
+      error_flag = true;
+      Global::err << "error: Seiriakos: " << message << std::endl;
+    }
+
+    void serialization(const Serializable& data)
+    {
+      LOG("Serializable");
+
       // serialize data via its specialized implementation
       data.serialization_sequence();
     }
 
-    void data_deserialization_implementation(Serializable& data)
+    void deserialization(Serializable& data)
     {
+      LOG("Serializable");
+
       // serialize data via its specialized implementation
       data.deserialization_sequence();
     }
-//--------------------------------------------------------------------------------------------------
+
     template<typename T>
-    void data_serialization_implementation(const T& data, is_generic<T>*)
+    std::string underlying_name()
     {
-      // std::cout << "GENERIC SERIALIZATION\n";
+      if (std::is_integral<T>::value)
+      {
+        return (std::is_unsigned<T>::value ? "uint" : "int") + std::to_string(sizeof(T) * 8);
+      }
+      else if (std::is_floating_point<T>::value)
+      {
+        return "float" + std::to_string(sizeof(T) * 8);
+      }
+      else return typeid(T).name();
+    }
+
+    template<typename T, typename>
+    void serialization(const T& data)
+    {
+      LOG(underlying_name<T>());
+
       // add data's bytes one by one to the buffer
       for (size_t k = 0; k < sizeof(T); ++k)
       {
         buffer.push_back(reinterpret_cast<const uint8_t*>(&data)[k]);
-      } 
+      }
     }
 
-    template<typename T>
-    void data_deserialization_implementation(T& data, is_generic<T>*)
+    template<typename T, typename>
+    void deserialization(T& data)
     {
-      // std::cout << "GENERIC DESERIALIZATION\n";
+      LOG(underlying_name<T>());
+
       if (front_of_buffer >= buffer.size())
       {
-        // error("could not deserialize data, buffer is empty");
+        error("could not deserialize data, buffer is empty");
         return;
       }
 
       if ((buffer.size() - front_of_buffer) < sizeof(T))
       {
-        // error("could not deserialize data, not enough bytes in buffer");
+        error("could not deserialize data, not enough bytes in buffer");
         return;
       }
 
@@ -344,218 +391,472 @@ namespace Seiriakos
         reinterpret_cast<uint8_t*>(&data)[k] = buffer[front_of_buffer++];
       }
     }
-//--------------------------------------------------------------------------------------------------
-    void size_serialization_implementation(const size_t& size)
+
+    void size_serialization(const size_t& size)
     {
-      uint8_t bytes_used = 8 - (size <= UINT8_MAX) - 2*(size <= UINT16_MAX) - 4*(size <= UINT32_MAX);
+      LOG("size_t");
+
+      // compute minimum amount of bytes needed to serialize
+      uint8_t bytes_used = 1;
+      for (size_t k = size; k >>= 8; ++bytes_used)
+      {}
 
       buffer.push_back(bytes_used);
 
-      for (size_t k = 0; k < bytes_used; ++k)
+      for (size_t k = 0; bytes_used--; k += 8)
       {
-        buffer.push_back(reinterpret_cast<const uint8_t*>(&size)[k]);
-      } 
-    }
-
-    void size_deserialization_implementation(size_t& size)
-    {
-      // std::cout << "SIZE DESERIALIZATION\n";
-      const uint8_t bytes_used = buffer[front_of_buffer++];
-
-      size = 0;
-
-      for (size_t k = 0; k < bytes_used; ++k)
-      {
-        reinterpret_cast<uint8_t*>(&size)[k] = buffer[front_of_buffer++];
+        buffer.push_back(uint8_t((size >> k) & 0xFF));
       }
     }
-//--------------------------------------------------------------------------------------------------
-    template<typename T>
-    void data_serialization_implementation(const std::basic_string<T>& string)
+
+    void size_deserialization(size_t& size)
     {
-      size_serialization_implementation(string.size());
+      LOG("size_t");
+
+      if (front_of_buffer >= buffer.size())
+      {
+        error("could not deserialize data, buffer is empty");
+        return;
+      }
+
+      uint8_t bytes_used = buffer[front_of_buffer++];
+
+      if ((buffer.size() - front_of_buffer) < bytes_used)
+      {
+        error("could not deserialize data, not enough bytes in buffer");
+        return;
+      }
+
+      size = 0;
+      for (size_t k = 0; bytes_used--; k += 8)
+      {
+        size |= (buffer[front_of_buffer++] << k);
+      }
+    }
+
+    template<typename T>
+    inline void serialization(const std::complex<T>& complex)
+    {
+      LOG("complex");
+
+      serialization(complex.real);
+      serialization(complex.imag);
+    }
+
+    template<typename T>
+    inline void deserialization(std::complex<T>& complex)
+    {
+      LOG("complex");
+      
+      deserialization(complex.real);
+      deserialization(complex.imag);
+    }
+
+    template<typename T>
+    void serialization(const std::basic_string<T>& string)
+    {
+      LOG("string");
+
+      size_serialization(string.size());
 
       for (T character : string)
       {
-        data_serialization_implementation(character);
+        serialization(character);
       }
     }
-    
+
     template<typename T>
-    void data_deserialization_implementation(std::basic_string<T>& string)
+    void deserialization(std::basic_string<T>& string)
     {
-      // std::cout << "STRING DESERIALIZATION\n";
-      size_t size;
-      size_deserialization_implementation(size);
+      LOG("string");
+
+      size_t size = 0;
+      size_deserialization(size);
 
       string.clear();
 
       T character;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(character);
+        deserialization(character);
         string += character;
       }
     }
-//--------------------------------------------------------------------------------------------------
-    template<typename T>
-    void data_serialization_implementation(const std::vector<T>& data)
-    {
-      size_serialization_implementation(data.size());
 
-      for (const T& value : data)
+    template<typename T>
+    void serialization(const std::vector<T>& vector)
+    {
+      LOG("vector");
+
+      size_serialization(vector.size());
+
+      for (const T& value : vector)
       {
-        data_serialization_implementation(value);
+        serialization(value);
       }
     }
 
     template<typename T>
-    void data_deserialization_implementation(std::vector<T>& data)
+    void deserialization(std::vector<T>& vector)
     {
-      // std::cout << "VECTOR DESERIALIZATION\n";
-      data.clear();
+      LOG("vector");
 
-      size_t size;
-      size_deserialization_implementation(size);
+      vector.clear();
 
-      data.reserve(size);
+      size_t size = 0;
+      size_deserialization(size);
+
+      vector.reserve(size);
 
       T value;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(value);
-        data.push_back(value);
+        deserialization(value);
+        vector.push_back(value);
       }
     }
-//--------------------------------------------------------------------------------------------------
-    template<typename T>
-    void data_serialization_implementation(const std::list<T>& data)
-    {
-      size_serialization_implementation(data.size());
 
-      for (const T& value : data)
+    template<typename T>
+    void serialization(const std::list<T>& list)
+    {
+      LOG("list");
+
+      size_serialization(list.size());
+
+      for (const T& value : list)
       {
-        data_serialization_implementation(value);
+        serialization(value);
       }
     }
 
     template<typename T>
-    void data_deserialization_implementation(std::list<T>& data)
+    void deserialization(std::list<T>& list)
     {
-      // std::cout << "LIST DESERIALIZATION\n";
-      data.clear();
+      LOG("list");
 
-      size_t size;
-      size_deserialization_implementation(size);
+      list.clear();
+
+      size_t size = 0;
+      size_deserialization(size);
 
       T value;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(value);
-        data.push_back(value);
+        deserialization(value);
+        list.push_back(value);
       }
     }
-//--------------------------------------------------------------------------------------------------
-    template<typename T>
-    void data_serialization_implementation(const std::deque<T>& data)
-    {
-      size_serialization_implementation(data.size());
 
-      for (const T& value : data)
+    template<typename T>
+    void serialization(const std::deque<T>& deque)
+    {
+      LOG("deque");
+
+      size_serialization(deque.size());
+
+      for (const T& value : deque)
       {
-        data_serialization_implementation(value);
+        serialization(value);
       }
     }
 
     template<typename T>
-    void data_deserialization_implementation(std::deque<T>& data)
+    void deserialization(std::deque<T>& deque)
     {
-      // std::cout << "DEQUE DESERIALIZATION\n";
-      data.clear();
+      LOG("deque");
 
-      size_t size;
-      size_deserialization_implementation(size);
+      deque.clear();
+
+      size_t size = 0;
+      size_deserialization(size);
 
       T value;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(value);
-        data.push_back(value);
+        deserialization(value);
+        deque.push_back(value);
       }
     }
-//--------------------------------------------------------------------------------------------------
+
     template<typename T1, typename T2>
-    void data_serialization_implementation(const std::pair<T1, T2>& data)
+    void serialization(const std::pair<T1, T2>& pair)
     {
-      data_serialization_implementation(data.first);
-      data_serialization_implementation(data.second);
+      LOG("pair");
+
+      serialization(pair.first);
+      serialization(pair.second);
     }
 
     template<typename T1, typename T2>
-    void data_deserialization_implementation(std::pair<T1, T2>& data)
+    void deserialization(std::pair<T1, T2>& pair)
     {
-      // std::cout << "PAIR DESERIALIZATION\n";
-      data_deserialization_implementation(data.first);
-      data_deserialization_implementation(data.second);
-    }
-//--------------------------------------------------------------------------------------------------
-    template<class M>
-    void data_serialization_implementation(M& data, enable_if_maplike<M>*)
-    {
-      size_serialization_implementation(data.size());
+      LOG("pair");
 
-      for (const std::pair<typename M::key_type, typename M::mapped_type>& key_value : data)
+      deserialization(pair.first);
+      deserialization(pair.second);
+    }
+
+    template<typename T1, typename T2>
+    void serialization(const std::unordered_map<T1, T2>& unordered_map)
+    {
+      LOG("unordered_map");
+
+      size_serialization(unordered_map.size());
+
+      for (const std::pair<const T1, T2>& key_value : unordered_map)
       {
-        data_serialization_implementation(key_value);
+        serialization(key_value);
       }
     }
 
-    template<class M>
-    void data_deserialization_implementation(M& data, enable_if_maplike<M>*)
+    template<typename T1, typename T2>
+    void deserialization(std::unordered_map<T1, T2>& unordered_map)
     {
-      // std::cout << "UNORDERED_MAP DESERIALIZATION\n";
-      size_t size;
-      size_deserialization_implementation(size);
+      LOG("unordered_map");
 
-      data.clear();
+      size_t size = 0;
+      size_deserialization(size);
 
-      std::pair<typename M::key_type, typename M::mapped_type> key_value;
+      unordered_map.clear();
+
+      std::pair<T1, T2> key_value;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(key_value);
-        data.insert(key_value);
+        deserialization(key_value);
+        unordered_map.insert(key_value);
       }
     }
-//--------------------------------------------------------------------------------------------------
-    template<class S>
-    void data_serialization_implementation(const S& data, enable_if_setlike<S>*)
-    {
-      size_serialization_implementation(data.size());
 
-      for (const typename S::key_type& key : data)
+    template<typename T1, typename T2>
+    void serialization(const std::unordered_multimap<T1, T2>& unordered_multimap)
+    {
+      LOG("unordered_multimap");
+      
+      size_serialization(unordered_multimap.size());
+
+      for (const std::pair<const T1, T2>& key_value : unordered_multimap)
       {
-        data_serialization_implementation(key);
+        serialization(key_value);
       }
     }
 
-    template<class S>
-    void data_deserialization_implementation(S& data, enable_if_setlike<S>*)
+    template<typename T1, typename T2>
+    void deserialization(std::unordered_multimap<T1, T2>& unordered_multimap)
     {
-      // std::cout << "UNORDERED_SET DESERIALIZATION\n";
-      size_t size;
-      size_deserialization_implementation(size);
+      LOG("unordered_multimap");
 
-      data.clear();
+      size_t size = 0;
+      size_deserialization(size);
 
-      typename S::key_type key;
+      unordered_multimap.clear();
+
+      std::pair<T1, T2> key_value;
       for (size_t k = 0; k < size; ++k)
       {
-        data_deserialization_implementation(key);
-        data.insert(key);
+        deserialization(key_value);
+        unordered_multimap.insert(key_value);
       }
+    }
+
+    template<typename T1, typename T2>
+    void serialization(const std::map<T1, T2>& map)
+    {
+      LOG("map");
+      
+      size_serialization(map.size());
+
+      for (const std::pair<const T1, T2>& key_value : map)
+      {
+        serialization(key_value);
+      }
+    }
+
+    template<typename T1, typename T2>
+    void deserialization(std::map<T1, T2>& map)
+    {
+      LOG("map");
+
+      size_t size = 0;
+      size_deserialization(size);
+
+      map.clear();
+
+      std::pair<T1, T2> key_value;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key_value);
+        map.insert(key_value);
+      }
+    }
+
+    template<typename T1, typename T2>
+    void serialization(const std::multimap<T1, T2>& multimap)
+    {
+      LOG("multimap");
+      
+      size_serialization(multimap.size());
+
+      for (const std::pair<const T1, T2>& key_value : multimap)
+      {
+        serialization(key_value);
+      }
+    }
+
+    template<typename T1, typename T2>
+    void deserialization(std::multimap<T1, T2>& multimap)
+    {
+      LOG("multimap");
+
+      size_t size = 0;
+      size_deserialization(size);
+
+      multimap.clear();
+
+      std::pair<T1, T2> key_value;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key_value);
+        multimap.insert(key_value);
+      }
+    }
+
+    template<typename T>
+    void serialization(const std::unordered_set<T>& unordered_set)
+    {
+      LOG("unordered_set");
+
+      size_serialization(unordered_set.size());
+
+      for (const T& key : unordered_set)
+      {
+        serialization(key);
+      }
+    }
+
+    template<typename T>
+    void deserialization(std::unordered_set<T>& unordered_set)
+    {
+      LOG("unordered_set");
+
+      size_t size = 0;
+      size_deserialization(size);
+
+      unordered_set.clear();
+
+      T key;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key);
+        unordered_set.insert(key);
+      }
+    }
+
+    template<typename T>
+    void serialization(const std::unordered_multiset<T>& unordered_multiset)
+    {
+      LOG("unordered_multiset");
+      
+      size_serialization(unordered_multiset.size());
+
+      for (const T& key : unordered_multiset)
+      {
+        serialization(key);
+      }
+    }
+
+    template<typename T>
+    void deserialization(std::unordered_multiset<T>& unordered_multiset)
+    {
+      LOG("unordered_multiset");
+      
+      size_t size = 0;
+      size_deserialization(size);
+
+      unordered_multiset.clear();
+
+      T key;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key);
+        unordered_multiset.insert(key);
+      }
+    }
+
+    template<typename T>
+    void serialization(const std::set<T>& set)
+    {
+      LOG("set");
+      
+      size_serialization(set.size());
+
+      for (const T& key : set)
+      {
+        serialization(key);
+      }
+    }
+
+    template<typename T>
+    void deserialization(std::set<T>& set)
+    {
+      LOG("set");
+      
+      size_t size = 0;
+      size_deserialization(size);
+
+      set.clear();
+
+      T key;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key);
+        set.insert(key);
+      }
+    }
+
+    template<typename T>
+    void serialization(const std::multiset<T>& multiset)
+    {
+      LOG("multiset");
+      
+      size_serialization(multiset.size());
+
+      for (const T& key : multiset)
+      {
+        serialization(key);
+      }
+    }
+
+    template<typename T>
+    void deserialization(std::multiset<T>& multiset)
+    {
+      LOG("multiset");
+      
+      size_t size = 0;
+      size_deserialization(size);
+
+      multiset.clear();
+
+      T key;
+      for (size_t k = 0; k < size; ++k)
+      {
+        deserialization(key);
+        multiset.insert(key);
+      }
+    }
+
+    template<typename... T>
+    void serialization(const std::tuple<T...>&)
+    {
+      error("tuples are not implemented yet");
+    }
+
+    template<typename... T>
+    void deserialization(std::tuple<T...>&)
+    {
+      error("tuples are not implemented yet");
     }
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
   inline namespace Frontend
   {
     void print_bytes(const uint8_t data[], const size_t size, const bool print_header)
@@ -565,7 +866,7 @@ namespace Seiriakos
         Global::out << "bytes[" << std::dec << size << "]: ";
       }
 
-      Global::out << std::hex<< std::setfill('0');
+      Global::out << std::hex << std::setfill('0');
       for (size_t k = 0; k < size; ++k)
       {
         Global::out << std::setw(2) << std::uppercase << unsigned(data[k] & 0xFF) << ' ';
@@ -574,6 +875,6 @@ namespace Seiriakos
       Global::out << std::endl;
     }
   }
-//--------------------------------------------------------------------------------------------------
+//----------------------------------------------------------------------------------------------------------------------
 }
 #endif

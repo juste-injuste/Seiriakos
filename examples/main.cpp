@@ -65,8 +65,8 @@ int main()
 
   Seiriakos::print_bytes(serialized.data(), serialized.size());
 
-  // Something decoded;
-  // decoded.deserialize(serialized.data(), serialized.size());
+  Something decoded;
+  decoded.deserialize(serialized.data(), serialized.size());
 
-  // std::cout << decoded.display("something decoded");
+  std::cout << decoded.display("something decoded");
 }

@@ -1,3 +1,4 @@
+#define LOGGING
 #include "../include/Seiriakos.hpp"
 #include <iostream>
 #include <cstdint>
@@ -16,25 +17,19 @@ struct Something final : public Seiriakos::Serializable
     stream << "  a:\n";
     for (const auto key_value : a)
     {
-      // stream << "    key: " << key_value.first << ", value: " << key_value.second << '\n';
-      // stream << "    key: " << key_value << '\n';
+      stream << "    key: " << key_value.first << ", value: " << key_value.second << '\n';
     }
     stream << "  b:\n";
     stream << "    " << b << '\n';
     return stream.str();
   }
 
-  SEIRIAKOS_SEQUENCE(a);
+  SEIRIAKOS_SEQUENCE(a, b);
 };
 
 int main()
 {
   Something something;
-  // something.a["test"] = 1;
-  // something.a["allo"] = 2;
-  // something.a["byebye"] = 3;
-  // something.a["f"] = 54;
-  // something.a["f"] = 32;
   something.a.insert({"test", 1});
   something.a.insert({"allo", 2});
   something.a.insert({"byebye", 3});
@@ -46,8 +41,6 @@ int main()
   // something.a.insert("f");
   // something.a.insert("f");
   something.b = 0xDEADBEEF;
-
-  Seiriakos::Backend::data_serialization_implementation(something.a);
 
   std::cout << something.display("something");
   
