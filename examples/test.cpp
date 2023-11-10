@@ -15,7 +15,7 @@ struct Something final : public Seiriakos::Serializable
     std::stringstream stream;
     stream << name << ":\n";
     stream << "  a:\n";
-    for (const auto key_value : a)
+    for (const auto& key_value : a)
     {
       stream << "    key: " << key_value.first << ", value: " << key_value.second << '\n';
     }

@@ -406,7 +406,7 @@ namespace Seiriakos
 
       for (size_t k = 0; bytes_used--; k += 8)
       {
-        buffer.push_back(uint8_t((size >> k) & 0xFF));
+        buffer.push_back(static_cast<uint8_t>((size >> k) & 0xFF));
       }
     }
 
@@ -476,7 +476,7 @@ namespace Seiriakos
 
       string.clear();
 
-      T character;
+      T character = '\n';
       for (size_t k = 0; k < size; ++k)
       {
         deserialization_implementation(character);
