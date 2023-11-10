@@ -33,26 +33,7 @@ SOFTWARE.
 -----description------------------------------------------------------------------------------------
 
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
-deserialize objects. do #define SEIRIAKOS_NOT_THREADSAFE before including to disable thread-safety.
-
-currently supported types:
-  all fundamental integer types
-  all fundamental floating point types
-
-  std::basic_string
-  std::vector
-  std::array
-  std::unordered_map
-  std::map
-  std::unordered_set
-  std::set
-  std::pair
-  std::list
-  std::deque
-  std::unordered_multimap
-  std::multimap
-  std::unordered_multiset
-  std::multiset
+deserialize objects.
 
 -----inclusion guard------------------------------------------------------------------------------*/
 #ifndef SEIRIAKOS_H
@@ -64,7 +45,12 @@ currently supported types:
 #include <type_traits> // for std::is_base_of
 #include <iostream>    // for std::cout, std::cerr
 #include <iomanip>     // for std::setw, std::setfill, std::hex
-#include <ios>         // for std::uppercase
+#include <ios>         // for std::uppercase 
+#ifdef SEIRIAKOS_LOGGING
+# include <typeinfo>   // for typeid
+# include <cxxabi.h>   // for abi::__cxa_demangle
+# include <cstdlib>    // for std::free
+#endif
 //-------------------
 #include <complex>
 #include <vector>
@@ -101,7 +87,7 @@ namespace Seiriakos
     class Serializable;
 
     // macro to implement quickly serialization/deserialization from a list of variables
-    #define SEIRIAKOS_SEQUENCE(...)
+#   define SEIRIAKOS_SEQUENCE(...)
     
     // print all bytes of an array of bytes
     inline void print_bytes(const uint8_t data[], const size_t size, const bool print_header = true);
@@ -111,37 +97,39 @@ namespace Seiriakos
   {
     void error(const char* message) noexcept;
 
-    #ifdef SEIRIAKOS_NOT_THREADSAFE
-      static std::vector<uint8_t> buffer;
-      static size_t front_of_buffer;
-      static bool error_flag;
-    #else
-      static thread_local std::vector<uint8_t> buffer;
-      static thread_local size_t front_of_buffer;
-      static thread_local bool error_flag;
-    #endif
+# if defined(__STDCPP_THREADS__) and (__STDCPP_THREADS__ == 1)
+    static thread_local std::vector<uint8_t> buffer;
+    static thread_local size_t front_of_buffer;
+    static thread_local bool error_flag;
+# else
+    static std::vector<uint8_t> buffer;
+    static size_t front_of_buffer;
+    static bool error_flag;
+#   endif
 
-    #ifdef SEIRIAKOS_LOGGING
-      class IndentLog
-      {
-        public:
-          inline IndentLog(const std::string& text) noexcept
-          {
-            std::clog << (indentation += "  ") << text << std::endl;
-          }
+# if defined(SEIRIAKOS_LOGGING)
+    class IndentLog
+    {
+      public:
+        inline IndentLog(const std::string& text) noexcept
+        {
+          std::clog << "log: " << indentation << text << std::endl;
+          indentation += "  ";
+        }
 
-          inline ~IndentLog() noexcept
-          {
-            indentation.resize(indentation.length() - 2);
-          }
-        private:
-          static std::string indentation;
-      };
-      std::string IndentLog::indentation;
-      #define LOG(text) Backend::IndentLog inde_nt_l_og_{text} // mangled name to avoid name collision
-    #else
-      #define LOG(text)
-    #endif
+        inline ~IndentLog() noexcept
+        {
+          indentation.resize(indentation.length() - 2);
+        }
+      private:
+        static std::string indentation;
+    };
+    std::string IndentLog::indentation;
+
+#   define SEIRIAKOS_LOG(text) Backend::IndentLog inde_nt_l_og_{text} // mangled name to avoid name collision
+# else
+#   define SEIRIAKOS_LOG(text) /* to enable logging #define SEIRIAKOS_LOGGING */
+# endif
 
     template<typename T>
     using disable_if_Serializable = typename std::enable_if<!std::is_base_of<Serializable, T>::value>::type;
@@ -329,7 +317,7 @@ namespace Seiriakos
 
     void serialization_implementation(const Serializable& data)
     {
-      LOG("Serializable");
+      SEIRIAKOS_LOG("Serializable");
 
       // serialize data via its specialized implementation
       data.serialization_sequence();
@@ -337,12 +325,13 @@ namespace Seiriakos
 
     void deserialization_implementation(Serializable& data)
     {
-      LOG("Serializable");
+      SEIRIAKOS_LOG("Serializable");
 
       // serialize data via its specialized implementation
       data.deserialization_sequence();
     }
 
+# if defined(SEIRIAKOS_LOGGING)
     template<typename T>
     std::string underlying_name()
     {
@@ -354,13 +343,21 @@ namespace Seiriakos
       {
         return "float" + std::to_string(sizeof(T) * 8);
       }
-      else return typeid(T).name();
+      else
+      {
+        int status;
+        char* demangled = abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, &status);
+        std::string demangled_name = demangled;
+        std::free(demangled);
+        return demangled_name;
+      }
     }
+# endif
 
     template<typename T, typename>
     void serialization_implementation(const T& data)
     {
-      LOG(underlying_name<T>());
+      SEIRIAKOS_LOG(underlying_name<T>());
 
       // add data's bytes one by one to the buffer
       for (size_t k = 0; k < sizeof(T); ++k)
@@ -372,7 +369,7 @@ namespace Seiriakos
     template<typename T, typename>
     void deserialization_implementation(T& data)
     {
-      LOG(underlying_name<T>());
+      SEIRIAKOS_LOG(underlying_name<T>());
 
       if (front_of_buffer >= buffer.size())
       {
@@ -395,7 +392,7 @@ namespace Seiriakos
 
     void size_t_serialization_implementation(const size_t& size)
     {
-      LOG("size_t");
+      SEIRIAKOS_LOG("size_t");
 
       // compute minimum amount of bytes needed to serialize
       uint8_t bytes_used = 1;
@@ -412,7 +409,7 @@ namespace Seiriakos
 
     void size_t_deserialization_implementation(size_t& size)
     {
-      LOG("size_t");
+      SEIRIAKOS_LOG("size_t");
 
       if (front_of_buffer >= buffer.size())
       {
@@ -438,7 +435,7 @@ namespace Seiriakos
     template<typename T>
     inline void serialization_implementation(const std::complex<T>& complex)
     {
-      LOG("complex");
+      SEIRIAKOS_LOG("std::complex");
 
       serialization_implementation(complex.real);
       serialization_implementation(complex.imag);
@@ -447,7 +444,7 @@ namespace Seiriakos
     template<typename T>
     inline void deserialization_implementation(std::complex<T>& complex)
     {
-      LOG("complex");
+      SEIRIAKOS_LOG("std::complex");
       
       deserialization_implementation(complex.real);
       deserialization_implementation(complex.imag);
@@ -456,7 +453,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::basic_string<T>& string)
     {
-      LOG("string");
+      SEIRIAKOS_LOG("std::string");
 
       size_t_serialization_implementation(string.size());
 
@@ -469,7 +466,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::basic_string<T>& string)
     {
-      LOG("string");
+      SEIRIAKOS_LOG("std::string");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -487,7 +484,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::vector<T>& vector)
     {
-      LOG("vector");
+      SEIRIAKOS_LOG("std::vector");
 
       size_t_serialization_implementation(vector.size());
 
@@ -500,7 +497,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::vector<T>& vector)
     {
-      LOG("vector");
+      SEIRIAKOS_LOG("std::vector");
 
       vector.clear();
 
@@ -520,7 +517,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::list<T>& list)
     {
-      LOG("list");
+      SEIRIAKOS_LOG("std::list");
 
       size_t_serialization_implementation(list.size());
 
@@ -533,7 +530,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::list<T>& list)
     {
-      LOG("list");
+      SEIRIAKOS_LOG("std::list");
 
       list.clear();
 
@@ -551,7 +548,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::deque<T>& deque)
     {
-      LOG("deque");
+      SEIRIAKOS_LOG("std::deque");
 
       size_t_serialization_implementation(deque.size());
 
@@ -564,7 +561,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::deque<T>& deque)
     {
-      LOG("deque");
+      SEIRIAKOS_LOG("std::deque");
 
       deque.clear();
 
@@ -582,7 +579,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void serialization_implementation(const std::pair<T1, T2>& pair)
     {
-      LOG("pair");
+      SEIRIAKOS_LOG("std::pair");
 
       serialization_implementation(pair.first);
       serialization_implementation(pair.second);
@@ -591,7 +588,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void deserialization_implementation(std::pair<T1, T2>& pair)
     {
-      LOG("pair");
+      SEIRIAKOS_LOG("std::pair");
 
       deserialization_implementation(pair.first);
       deserialization_implementation(pair.second);
@@ -600,7 +597,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void serialization_implementation(const std::unordered_map<T1, T2>& unordered_map)
     {
-      LOG("unordered_map");
+      SEIRIAKOS_LOG("std::unordered_map");
 
       size_t_serialization_implementation(unordered_map.size());
 
@@ -613,7 +610,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void deserialization_implementation(std::unordered_map<T1, T2>& unordered_map)
     {
-      LOG("unordered_map");
+      SEIRIAKOS_LOG("std::unordered_map");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -631,7 +628,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap)
     {
-      LOG("unordered_multimap");
+      SEIRIAKOS_LOG("std::unordered_multimap");
       
       size_t_serialization_implementation(unordered_multimap.size());
 
@@ -644,7 +641,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap)
     {
-      LOG("unordered_multimap");
+      SEIRIAKOS_LOG("std::unordered_multimap");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -662,7 +659,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void serialization_implementation(const std::map<T1, T2>& map)
     {
-      LOG("map");
+      SEIRIAKOS_LOG("std::map");
       
       size_t_serialization_implementation(map.size());
 
@@ -675,7 +672,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void deserialization_implementation(std::map<T1, T2>& map)
     {
-      LOG("map");
+      SEIRIAKOS_LOG("std::map");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -693,7 +690,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void serialization_implementation(const std::multimap<T1, T2>& multimap)
     {
-      LOG("multimap");
+      SEIRIAKOS_LOG("std::multimap");
       
       size_t_serialization_implementation(multimap.size());
 
@@ -706,7 +703,7 @@ namespace Seiriakos
     template<typename T1, typename T2>
     void deserialization_implementation(std::multimap<T1, T2>& multimap)
     {
-      LOG("multimap");
+      SEIRIAKOS_LOG("std::multimap");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -724,7 +721,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::unordered_set<T>& unordered_set)
     {
-      LOG("unordered_set");
+      SEIRIAKOS_LOG("std::unordered_set");
 
       size_t_serialization_implementation(unordered_set.size());
 
@@ -737,7 +734,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::unordered_set<T>& unordered_set)
     {
-      LOG("unordered_set");
+      SEIRIAKOS_LOG("std::unordered_set");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -755,7 +752,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::unordered_multiset<T>& unordered_multiset)
     {
-      LOG("unordered_multiset");
+      SEIRIAKOS_LOG("std::unordered_multiset");
       
       size_t_serialization_implementation(unordered_multiset.size());
 
@@ -768,7 +765,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::unordered_multiset<T>& unordered_multiset)
     {
-      LOG("unordered_multiset");
+      SEIRIAKOS_LOG("std::unordered_multiset");
       
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -786,7 +783,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::set<T>& set)
     {
-      LOG("set");
+      SEIRIAKOS_LOG("std::set");
       
       size_t_serialization_implementation(set.size());
 
@@ -799,7 +796,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::set<T>& set)
     {
-      LOG("set");
+      SEIRIAKOS_LOG("std::set");
       
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -817,7 +814,7 @@ namespace Seiriakos
     template<typename T>
     void serialization_implementation(const std::multiset<T>& multiset)
     {
-      LOG("multiset");
+      SEIRIAKOS_LOG("std::multiset");
       
       size_t_serialization_implementation(multiset.size());
 
@@ -830,7 +827,7 @@ namespace Seiriakos
     template<typename T>
     void deserialization_implementation(std::multiset<T>& multiset)
     {
-      LOG("multiset");
+      SEIRIAKOS_LOG("std::multiset");
       
       size_t size = 0;
       size_t_deserialization_implementation(size);
@@ -876,6 +873,8 @@ namespace Seiriakos
       Global::out << std::endl;
     }
   }
+
+  #undef SEIRIAKOS_LOG
 //----------------------------------------------------------------------------------------------------------------------
 }
 #endif

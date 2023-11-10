@@ -1,3 +1,6 @@
+
+
+#include "../include/logger.hpp"
 #include "../include/Seiriakos.hpp"
 #include <iostream>
 #include <cstdint>
@@ -14,6 +17,7 @@ struct SDS final : public Seiriakos::Serializable
   
   std::string display(const char* name)
   {
+    LOGGER_ILOG("displaying");
     std::stringstream stream;
     stream << "  " << name << ":\n";  
     stream << "    a: " << a   << '\n';
@@ -35,6 +39,7 @@ struct Something final : public Seiriakos::Serializable
   
   std::string display(const char* name)
   {
+    LOGGER_ILOG("displaying");
     std::stringstream stream;
     stream << name << ":\n";  
     stream << "  a: " << a   << '\n';
