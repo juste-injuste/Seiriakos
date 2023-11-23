@@ -153,7 +153,7 @@ namespace Seiriakos
     template<typename T, typename = disable_if_Serializable<T>>
     inline void deserialization_implementation(T& data);
 
-    inline void size_t_serialization_implementation(const size_t& size);
+    inline void size_t_serialization_implementation(size_t size);
     inline void size_t_deserialization_implementation(size_t& size);
 
     template<typename T>
@@ -339,7 +339,6 @@ namespace Seiriakos
       data.deserialization_sequence();
     }
 
-# if defined(SEIRIAKOS_LOGGING)
     template<typename T>
     std::string underlying_name()
     {
@@ -360,7 +359,6 @@ namespace Seiriakos
         return demangled_name;
       }
     }
-# endif
 
     template<typename T, typename>
     void serialization_implementation(const T& data)
@@ -398,7 +396,7 @@ namespace Seiriakos
       }
     }
 
-    void size_t_serialization_implementation(const size_t& size)
+    void size_t_serialization_implementation(size_t size)
     {
       SEIRIAKOS_LOG("size_t");
 
@@ -496,7 +494,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(vector.size());
 
-      for (const T& value : vector)
+      for (const auto& value : vector)
       {
         serialization_implementation(value);
       }
@@ -529,7 +527,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(list.size());
 
-      for (const T& value : list)
+      for (const auto& value : list)
       {
         serialization_implementation(value);
       }
@@ -560,7 +558,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(deque.size());
 
-      for (const T& value : deque)
+      for (const auto& value : deque)
       {
         serialization_implementation(value);
       }
@@ -576,7 +574,7 @@ namespace Seiriakos
       size_t size = 0;
       size_t_deserialization_implementation(size);
 
-      T value;
+      T value = {};
       for (size_t k = 0; k < size; ++k)
       {
         deserialization_implementation(value);
@@ -609,7 +607,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(unordered_map.size());
 
-      for (const std::pair<const T1, T2>& key_value : unordered_map)
+      for (const auto& key_value : unordered_map)
       {
         serialization_implementation(key_value);
       }
@@ -640,7 +638,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(unordered_multimap.size());
 
-      for (const std::pair<const T1, T2>& key_value : unordered_multimap)
+      for (const auto& key_value : unordered_multimap)
       {
         serialization_implementation(key_value);
       }
@@ -671,7 +669,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(map.size());
 
-      for (const std::pair<const T1, T2>& key_value : map)
+      for (const auto>& key_value : map)
       {
         serialization_implementation(key_value);
       }
@@ -702,7 +700,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(multimap.size());
 
-      for (const std::pair<const T1, T2>& key_value : multimap)
+      for (const auto& key_value : multimap)
       {
         serialization_implementation(key_value);
       }
@@ -733,7 +731,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(unordered_set.size());
 
-      for (const T& key : unordered_set)
+      for (const auto& key : unordered_set)
       {
         serialization_implementation(key);
       }
@@ -764,7 +762,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(unordered_multiset.size());
 
-      for (const T& key : unordered_multiset)
+      for (const auto& key : unordered_multiset)
       {
         serialization_implementation(key);
       }
@@ -795,7 +793,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(set.size());
 
-      for (const T& key : set)
+      for (const auto& key : set)
       {
         serialization_implementation(key);
       }
@@ -826,7 +824,7 @@ namespace Seiriakos
       
       size_t_serialization_implementation(multiset.size());
 
-      for (const T& key : multiset)
+      for (const auto& key : multiset)
       {
         serialization_implementation(key);
       }
