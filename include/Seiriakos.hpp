@@ -40,7 +40,7 @@ deserialize objects.
 #define SEIRIAKOS_H
 //---necessary standard libraries-------------------------------------------------------------------
 #include <cstddef>     // for size_t
-#include <cstdint>     // for uint8_t, UINT8_MAX, UINT16_MAX, UINT32_MAX
+#include <cstdint>     // for uint8_t
 #include <vector>      // for std::vector
 #include <type_traits> // for std::is_base_of
 #include <iostream>    // for std::cout, std::cerr
@@ -97,7 +97,7 @@ namespace Seiriakos
   {
     void error(const char* message) noexcept;
 
-# if defined(__STDCPP_THREADS__) and (__STDCPP_THREADS__ == 1)
+# if defined(__STDCPP_THREADS__)
     static thread_local std::vector<uint8_t> buffer;
     static thread_local size_t front_of_buffer;
     static thread_local bool error_flag;
@@ -110,21 +110,29 @@ namespace Seiriakos
 # if defined(SEIRIAKOS_LOGGING)
     class IndentLog
     {
-      public:
-        inline IndentLog(const std::string& text) noexcept
+    public:
+      inline IndentLog(const std::string& text) noexcept
+      {
+        Global::log << "log: ";
+
+        for (unsigned k = indentation; k; --k)
         {
-          std::clog << "log: " << indentation << text << std::endl;
-          indentation += "  ";
+          Global::log << "  ";
         }
 
-        inline ~IndentLog() noexcept
-        {
-          indentation.resize(indentation.length() - 2);
-        }
-      private:
-        static std::string indentation;
+        Global::log << text << std::endl;
+
+        ++indentation;
+      }
+
+      inline ~IndentLog() noexcept
+      {
+        --indentation;
+      }
+    private:
+      static unsigned indentation;
     };
-    std::string IndentLog::indentation;
+    unsigned IndentLog::indentation;
 
 #   define SEIRIAKOS_LOG(text) Backend::IndentLog inde_nt_l_og_{text} // mangled name to avoid name collision
 # else
@@ -132,7 +140,7 @@ namespace Seiriakos
 # endif
 
     template<typename T>
-    using disable_if_Serializable = typename std::enable_if<!std::is_base_of<Serializable, T>::value>::type;
+    using disable_if_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
 
     template<typename T>
     inline std::string underlying_name();
