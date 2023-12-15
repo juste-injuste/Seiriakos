@@ -1,4 +1,4 @@
-#define SEIRIAKOS_LOGGING
+// #define SEIRIAKOS_LOGGING
 #include "../include/Seiriakos.hpp"
 #define CHRONOMETRO_WARNINGS
 #include "../include/Chronometro.hpp"
@@ -39,17 +39,17 @@ int main()
   std::vector<uint8_t> serialized;
   Something decoded;
 
+loop:
   CHRONOMETRO_MEASURE()
   serialized = something.serialize();
   
   CHRONOMETRO_MEASURE()
   decoded.deserialize(serialized.data(), serialized.size());
 
-// loop:
 //   CHRONOMETRO_MEASURE_LAPS(10, "iteration %# took: %ms")
 //   {
 //     sleep_for_ms(100);
 //   }
-//   std::cin.get();
-//   goto loop;
+  std::cin.get();
+  goto loop;
 }
