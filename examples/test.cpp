@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <string>
 #include <array>
+#include <cerrno>
 
 // scuffed sleep function to demonstrate the basic usage of the library
 void sleep_for_ms(std::chrono::high_resolution_clock::rep ms)
@@ -26,7 +27,7 @@ struct Something final : public Seiriakos::Serializable
 {
   std::array<uint8_t, 15500> a;
   std::string b = "allo";
-  SDS c;
+  SDS c         = {};
 
   SEIRIAKOS_SEQUENCE(a, b, c);
 };
@@ -50,6 +51,7 @@ loop:
 //   {
 //     sleep_for_ms(100);
 //   }
+
   std::cin.get();
   goto loop;
 }

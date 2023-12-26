@@ -44,14 +44,15 @@ deserialize objects.
 #include <vector>      // for std::vector
 #include <type_traits> // for std::is_base_of
 #include <iostream>    // for std::cout, std::cerr
+#include <sstream>     // for std::stringstream
 #include <iomanip>     // for std::setw, std::setfill, std::hex
-#include <ios>         // for std::uppercase 
-#if defined(SEIRIAKOS_LOGGING)
+#include <ios>         // for std::uppercase
 #if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
 # define  SEIRIAKOS_THREADSAFE
 # include <mutex>      // for std::mutex, std::lock_guard
-# include <atomic>     // for std::atomic_uint
-#endif
+# include <atomic>     // for std::atomic
+#endif 
+#if defined(SEIRIAKOS_LOGGING)
 #if defined(__GNUC__)
 # include <cxxabi.h>   // for abi::__cxa_demangle
 #endif
@@ -73,7 +74,14 @@ deserialize objects.
 //---Seiriakos library------------------------------------------------------------------------------
 namespace Seiriakos
 {
-  enum class Info : char;
+  enum class Info : uint8_t
+  {
+    ALL_GOOD            = 0,
+    MISSING_BYTES       = 1,
+    EMPTY_BUFFER        = 2,
+    SEQUENCE_MISMATCH   = 3,
+    NOT_IMPLEMENTED_YET = 4
+  };
 
   // serialize "thing"
   template<typename T> inline
@@ -91,7 +99,14 @@ namespace Seiriakos
 
   // print bytes from memory
   inline
-  void print_bytes(const uint8_t data[], const size_t size, const bool print_header = true);
+  const char* bytes_as_cstring(const uint8_t data[], const size_t size);
+
+  namespace Global
+  {
+    std::ostream out{std::cout.rdbuf()}; // output ostream
+    std::ostream err{std::cerr.rdbuf()}; // error ostream
+    std::ostream log{std::clog.rdbuf()}; // logging ostream
+  }
 
   namespace Version
   {
@@ -100,35 +115,32 @@ namespace Seiriakos
     constexpr unsigned long PATCH  = 000;
     constexpr unsigned long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
   }
-
-  namespace Global
-  {
-    std::ostream out{std::cout.rdbuf()}; // output ostream
-    std::ostream err{std::cerr.rdbuf()}; // error ostream
-    std::ostream log{std::clog.rdbuf()}; // logging ostream
-  }
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
-# if defined(SEIRIAKOS_THREADSAFE)
-    static thread_local std::vector<uint8_t> _buffer;
-    static thread_local size_t _front_of_buffer;
-    static thread_local Info   _info;
+# if defined(__clang__) and (__clang_major__ >= 12)
+#   define SEIRIAKOS_COLD [[unlikely]]
+# elif defined(__GNUC__) and (__GNUC__ >= 9)
+#   define SEIRIAKOS_COLD [[unlikely]]
 # else
-    static std::vector<uint8_t> _buffer;
-    static size_t _front_of_buffer;
-    static Info   _info;
-#   endif
+#   define SEIRIAKOS_COLD
+# endif
 
-//     void _error(const char* message, Status ec) noexcept
-//     {
-// #   if defined(SEIRIAKOS_THREADSAFE)
-//       static std::mutex mtx;
-//       std::lock_guard<std::mutex> lock{mtx};
-// #   endif
-//       _info = ec;
-//       Global::err << "error: Seiriakos: " << message << std::endl;
-//     }
+# if defined(SEIRIAKOS_THREADSAFE)
+#   define SEIRIAKOS_THREADLOCAL      thread_local
+#   define SEIRIAKOS_ATOMIC(T)        std::atomic<T>
+#   define SEIRIAKOS_MAKE_MUTEX(NAME) static std::mutex NAME
+#   define SEIRIAKOS_LOCK(MUTEX)      std::lock_guard<decltype(MUTEX)> _lock{MUTEX}
+# else
+#   define SEIRIAKOS_THREADLOCAL
+#   define SEIRIAKOS_ATOMIC(T)        T
+#   define SEIRIAKOS_MAKE_MUTEX(NAME)
+#   define SEIRIAKOS_LOCK(MUTEX)
+# endif
+
+    static SEIRIAKOS_THREADLOCAL std::vector<uint8_t> _buffer;
+    static SEIRIAKOS_THREADLOCAL size_t _front_of_buffer;
+    static SEIRIAKOS_THREADLOCAL Info _info;
 
 # if defined(SEIRIAKOS_LOGGING)
     class _indentlog
@@ -136,10 +148,8 @@ namespace Seiriakos
     public:
       _indentlog(std::string text) noexcept
       {
-#     if defined(SEIRIAKOS_THREADSAFE)
-        static std::mutex mtx;
-        std::lock_guard<std::mutex> lock{mtx};
-#     endif
+        SEIRIAKOS_MAKE_MUTEX(mtx);
+        SEIRIAKOS_LOCK(mtx);
 
         for (unsigned k = indentation++; k; --k)
         {
@@ -151,18 +161,10 @@ namespace Seiriakos
 
       ~_indentlog() noexcept { --indentation; }
     private:
-#   if defined(SEIRIAKOS_THREADSAFE)
-      static std::atomic_uint indentation;
-#   else
-      static unsigned indentation;
-#   endif
+      static SEIRIAKOS_ATOMIC(unsigned) indentation;
     };
 
-# if defined(SEIRIAKOS_THREADSAFE)
-    std::atomic_uint _indentlog::indentation;
-# else
-    unsigned _indentlog::indentation;
-# endif
+    SEIRIAKOS_ATOMIC(unsigned) _indentlog::indentation;
 
     template<typename T> inline
     std::string _underlying_name()
@@ -175,7 +177,7 @@ namespace Seiriakos
       {
         return "float" + std::to_string(sizeof(T) * 8);
       }
-#   if defined(__GNUC__)
+#   if defined(__clang__) or defined(__GNUC__)
       else
       {
         return abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr);
@@ -287,121 +289,34 @@ namespace Seiriakos
     void _serialization_implementation(const std::tuple<T...>& tuple);
     template<typename... T> inline
     void _deserialization_implementation(std::multiset<T...>& tuple);
-
-# if defined(__GNUC__) and (__GNUC__ >= 9)
-#   define SEIRIAKOS_COLD [[unlikely]]
-# elif defined(__clang__) and (__clang_major__ >= 12)
-#   define SEIRIAKOS_COLD [[unlikely]]
-# else
-#   define SEIRIAKOS_COLD
-# endif
   }
 //----------------------------------------------------------------------------------------------------------------------
-  enum class Info : char
-  {
-    ALL_GOOD,
-    MISSING_BYTES,
-    EMPTY_BUFFER,
-    SEQUENCE_MISMATCH,
-    NOT_IMPLEMENTED_YET
-  };
-
-  template<typename T>
-  auto serialize(const T& thing) noexcept -> std::vector<uint8_t>
-  {
-    SEIRIAKOS_LOG("----serialization summary:");
-    _backend::_buffer.clear();
-    _backend::_serialization_implementation(thing);
-    SEIRIAKOS_LOG("----------------------------");
-    return _backend::_buffer;
-  }
-
-  template<typename T>
-  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept
-  {
-    SEIRIAKOS_LOG("----deserialization summary:");
-    _backend::_buffer.assign(data, data + size);
-    _backend::_front_of_buffer = 0;
-    _backend::_info = Info::ALL_GOOD;
-    _backend::_deserialization_implementation(thing);
-
-    if (_backend::_front_of_buffer != _backend::_buffer.size())
-    {
-      // _backend::_error("buffer is not empty, serialization/deserialization sequence mismatch", Status::SEQUENCE_MISMATCH);
-      _backend::_info = Info::SEQUENCE_MISMATCH;
-    }
-
-    SEIRIAKOS_LOG("----------------------------");
-
-    return _backend::_info;
-  }
-
   class Serializable
   {
   public:
-    std::vector<uint8_t> serialize() const noexcept
-    {
-      return Seiriakos::serialize(*this);
-    }
+    inline
+    std::vector<uint8_t> serialize() const noexcept;
 
-    Info deserialize(const uint8_t data[], const size_t size) noexcept
-    {
-      return Seiriakos::deserialize(*this, data, size);
-    }
+    inline
+    Info deserialize(const uint8_t data[], const size_t size) noexcept;
   protected:
     // serialization/deserialization sequence (provided by the inheriting class)
-    virtual void serialization_sequence()   const noexcept = 0;
-    virtual void deserialization_sequence()       noexcept = 0;
+    virtual void serialization_sequence() const noexcept = 0;
+    virtual void deserialization_sequence()     noexcept = 0;
 
     // recursive calls to appropriate _serialization_implementation overloads
-    template<typename T, typename... Tn> inline
-    void serialization(const T& data, const Tn&... data_n) const noexcept
-    {
-      _backend::_serialization_implementation(data);
-      serialization(data_n...);
-    }
-    void serialization() const noexcept {};
+    template<typename T, typename... T_> inline
+    void serialization(const T& data, const T_&... remaining) const noexcept;
+    void serialization()                                      const noexcept {};
 
     // recursive calls to appropriate _deserialization_implementation overloads
-    template<typename T, typename... Tn> inline
-    void deserialization(T& data, Tn&... data_n) noexcept
-    {
-      _backend::_deserialization_implementation(data);
-      deserialization(data_n...);
-    }
-    void deserialization() noexcept {};
+    template<typename T, typename... T_> inline
+    void deserialization(T& data, T_&... remaining) noexcept;
+    void deserialization()                          noexcept {};
     
   friend void _backend::_serialization_implementation(const Serializable& data);
   friend void _backend::_deserialization_implementation(Serializable& data);
   };
-
-# undef  SEIRIAKOS_SEQUENCE
-# define SEIRIAKOS_SEQUENCE(...)                            \
-    private:                                                \
-      void serialization_sequence() const noexcept override \
-      {                                                     \
-        serialization(__VA_ARGS__);                         \
-      }                                                     \
-      void deserialization_sequence() noexcept override     \
-      {                                                     \
-        deserialization(__VA_ARGS__);                       \
-      }
-
-  void print_bytes(const uint8_t data[], const size_t size, const bool print_header)
-  {
-    if (print_header)
-    {
-      Global::out << "bytes[" << std::dec << size << "]: ";
-    }
-
-    Global::out << std::hex << std::setfill('0');
-    for (size_t k = 0; k < size; ++k)
-    {
-      Global::out << std::setw(2) << std::uppercase << unsigned(data[k] & 0xFF) << ' ';
-    }
-
-    Global::out << std::endl;
-  }
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
@@ -926,6 +841,103 @@ namespace Seiriakos
     }
   }
 //----------------------------------------------------------------------------------------------------------------------
-  #undef SEIRIAKOS_ILOG
+  template<typename T>
+  auto serialize(const T& thing) noexcept -> std::vector<uint8_t>
+  {
+    SEIRIAKOS_LOG("----serialization summary:");
+    _backend::_buffer.clear();
+    _backend::_serialization_implementation(thing);
+    SEIRIAKOS_LOG("----------------------------");
+    return _backend::_buffer;
+  }
+
+  template<typename T>
+  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept
+  {
+    SEIRIAKOS_LOG("----deserialization summary:");
+    _backend::_buffer.assign(data, data + size);
+    _backend::_front_of_buffer = 0;
+    _backend::_info = Info::ALL_GOOD;
+    _backend::_deserialization_implementation(thing);
+
+    if (_backend::_front_of_buffer != _backend::_buffer.size())
+    {
+      // _backend::_error("buffer is not empty, serialization/deserialization sequence mismatch", Status::SEQUENCE_MISMATCH);
+      _backend::_info = Info::SEQUENCE_MISMATCH;
+    }
+
+    SEIRIAKOS_LOG("----------------------------");
+
+    return _backend::_info;
+  }
+    
+  std::vector<uint8_t> Serializable::serialize() const noexcept
+  {
+    return Seiriakos::serialize(*this);
+  }
+
+  Info Serializable::deserialize(const uint8_t data[], const size_t size) noexcept
+  {
+    return Seiriakos::deserialize(*this, data, size);
+  }
+  
+  template<typename T, typename... T_>
+  void Serializable::serialization(const T& data, const T_&... remaining) const noexcept
+  {
+    _backend::_serialization_implementation(data);
+    serialization(remaining...);
+  }
+
+  template<typename T, typename... T_>
+  void Serializable::deserialization(T& data, T_&... remaining) noexcept
+  {
+    _backend::_deserialization_implementation(data);
+    deserialization(remaining...);
+  }
+
+# undef  SEIRIAKOS_SEQUENCE
+# define SEIRIAKOS_SEQUENCE(...)                            \
+    private:                                                \
+      void serialization_sequence() const noexcept override \
+      {                                                     \
+        serialization(__VA_ARGS__);                         \
+      }                                                     \
+      void deserialization_sequence() noexcept override     \
+      {                                                     \
+        deserialization(__VA_ARGS__);                       \
+      }
+
+  const char* bytes_as_cstring(const uint8_t data[], const size_t size)
+  {
+    static SEIRIAKOS_THREADLOCAL std::vector<char> buffer;
+    
+    if (data == nullptr)
+    {
+      SEIRIAKOS_LOG("data is nullptr");
+      return nullptr;
+    }
+
+    if ((3*size + 1) > buffer.capacity())
+    {
+      buffer = std::vector<char>(3*size + 1);
+    }
+
+    for (size_t k = 0; k < size; ++k)
+    {
+      char nybl_hi = data[k] >> 4;
+      char nybl_lo = data[k] & 0xF;
+
+      buffer.push_back((nybl_hi <= 0x9) ? (nybl_hi + '0') : (nybl_hi + 'A' - 10));
+      buffer.push_back((nybl_lo <= 0x9) ? (nybl_lo + '0') : (nybl_lo + 'A' - 10));
+
+      buffer.push_back(' ');
+    }
+
+    buffer[buffer.size() - 1] = '\0';
+
+    return buffer.data();
+  }
+//----------------------------------------------------------------------------------------------------------------------
 }
+#undef SEIRIAKOS_ILOG
 #endif
