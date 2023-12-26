@@ -47,7 +47,8 @@ deserialize objects.
 #include <iomanip>     // for std::setw, std::setfill, std::hex
 #include <ios>         // for std::uppercase 
 #if defined(SEIRIAKOS_LOGGING)
-#if defined(__STDCPP_THREADS__)
+#if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
+# define  SEIRIAKOS_THREADSAFE
 # include <mutex>      // for std::mutex, std::lock_guard
 # include <atomic>     // for std::atomic_uint
 #endif
@@ -72,15 +73,7 @@ deserialize objects.
 //---Seiriakos library------------------------------------------------------------------------------
 namespace Seiriakos
 {
-  namespace Version
-  {
-    constexpr unsigned long MAJOR  = 000;
-    constexpr unsigned long MINOR  = 001;
-    constexpr unsigned long PATCH  = 000;
-    constexpr unsigned long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
-  }
-
-  enum class Status : char;
+  enum class Info : char;
 
   // serialize "thing"
   template<typename T> inline
@@ -88,17 +81,25 @@ namespace Seiriakos
 
   // deserialize data into "thing"
   template<typename T> inline
-  auto deserialize(T& thing, const uint8_t data[], const size_t size) noexcept -> Status;
+  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept;
 
   // abstract class to add serialization capabilities
   class Serializable;
 
-  // macro to easily implement serialization/deserialization from a list of variables
+  // macro to facilitate serialization/deserialization member function implementations
 # define SEIRIAKOS_SEQUENCE(...)
 
   // print bytes from memory
   inline
   void print_bytes(const uint8_t data[], const size_t size, const bool print_header = true);
+
+  namespace Version
+  {
+    constexpr unsigned long MAJOR  = 000;
+    constexpr unsigned long MINOR  = 001;
+    constexpr unsigned long PATCH  = 000;
+    constexpr unsigned long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
+  }
 
   namespace Global
   {
@@ -109,23 +110,23 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
-# if defined(__STDCPP_THREADS__)
+# if defined(SEIRIAKOS_THREADSAFE)
     static thread_local std::vector<uint8_t> _buffer;
-    static thread_local size_t               _front_of_buffer;
-    static thread_local Status               _status;
+    static thread_local size_t _front_of_buffer;
+    static thread_local Info   _info;
 # else
     static std::vector<uint8_t> _buffer;
-    static size_t               _front_of_buffer;
-    static Status               _status;
+    static size_t _front_of_buffer;
+    static Info   _info;
 #   endif
 
 //     void _error(const char* message, Status ec) noexcept
 //     {
-// #   if defined(__STDCPP_THREADS__)
+// #   if defined(SEIRIAKOS_THREADSAFE)
 //       static std::mutex mtx;
 //       std::lock_guard<std::mutex> lock{mtx};
 // #   endif
-//       _status = ec;
+//       _info = ec;
 //       Global::err << "error: Seiriakos: " << message << std::endl;
 //     }
 
@@ -135,7 +136,7 @@ namespace Seiriakos
     public:
       _indentlog(std::string text) noexcept
       {
-#     if defined(__STDCPP_THREADS__)
+#     if defined(SEIRIAKOS_THREADSAFE)
         static std::mutex mtx;
         std::lock_guard<std::mutex> lock{mtx};
 #     endif
@@ -150,14 +151,14 @@ namespace Seiriakos
 
       ~_indentlog() noexcept { --indentation; }
     private:
-#   if defined(__STDCPP_THREADS__)
+#   if defined(SEIRIAKOS_THREADSAFE)
       static std::atomic_uint indentation;
 #   else
       static unsigned indentation;
 #   endif
     };
 
-# if defined(__STDCPP_THREADS__)
+# if defined(SEIRIAKOS_THREADSAFE)
     std::atomic_uint _indentlog::indentation;
 # else
     unsigned _indentlog::indentation;
@@ -174,17 +175,24 @@ namespace Seiriakos
       {
         return "float" + std::to_string(sizeof(T) * 8);
       }
+#   if defined(__GNUC__)
       else
       {
         return abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr);
       }
+#   else
+      else
+      {
+        return typeid(T).name();
+      }
+#   endif
     }
 
 #   define SEIRIAKOS_ILOG(text) _backend::_indentlog ilog{text}
 #   define SEIRIAKOS_LOG(text)  _backend::_indentlog{text}
 # else
 #   define SEIRIAKOS_ILOG(text) void(0)
-#   define SEIRIAKOS_LOG(text) void(0)
+#   define SEIRIAKOS_LOG(text)  void(0)
 # endif
 
     template<typename T>
@@ -281,15 +289,15 @@ namespace Seiriakos
     void _deserialization_implementation(std::multiset<T...>& tuple);
 
 # if defined(__GNUC__) and (__GNUC__ >= 9)
-#   define SEIRIAKOS_UNLIKELY [[unlikely]]
-# elif defined(__clang__) and (__clang_major__ >= 9)
-#   define SEIRIAKOS_UNLIKELY [[unlikely]]
+#   define SEIRIAKOS_COLD [[unlikely]]
+# elif defined(__clang__) and (__clang_major__ >= 12)
+#   define SEIRIAKOS_COLD [[unlikely]]
 # else
-#   define SEIRIAKOS_UNLIKELY
+#   define SEIRIAKOS_COLD
 # endif
   }
 //----------------------------------------------------------------------------------------------------------------------
-  enum class Status : char
+  enum class Info : char
   {
     ALL_GOOD,
     MISSING_BYTES,
@@ -309,23 +317,23 @@ namespace Seiriakos
   }
 
   template<typename T>
-  auto deserialize(T& thing, const uint8_t data[], const size_t size) noexcept -> Status
+  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept
   {
     SEIRIAKOS_LOG("----deserialization summary:");
     _backend::_buffer.assign(data, data + size);
     _backend::_front_of_buffer = 0;
-    _backend::_status      = Status::ALL_GOOD;
+    _backend::_info = Info::ALL_GOOD;
     _backend::_deserialization_implementation(thing);
 
     if (_backend::_front_of_buffer != _backend::_buffer.size())
     {
       // _backend::_error("buffer is not empty, serialization/deserialization sequence mismatch", Status::SEQUENCE_MISMATCH);
-      _backend::_status = Status::SEQUENCE_MISMATCH;
+      _backend::_info = Info::SEQUENCE_MISMATCH;
     }
 
     SEIRIAKOS_LOG("----------------------------");
 
-    return _backend::_status;
+    return _backend::_info;
   }
 
   class Serializable
@@ -336,7 +344,7 @@ namespace Seiriakos
       return Seiriakos::serialize(*this);
     }
 
-    Status deserialize(const uint8_t data[], const size_t size) noexcept
+    Info deserialize(const uint8_t data[], const size_t size) noexcept
     {
       return Seiriakos::deserialize(*this, data, size);
     }
@@ -428,17 +436,17 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG(_underlying_name<T>());
 
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
         // _error("could not deserialize data, buffer is empty", Status::EMPTY_BUFFER);
-        _backend::_status = Status::EMPTY_BUFFER;
+        _backend::_info = Info::EMPTY_BUFFER;
         return;
       }
 
-      if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_UNLIKELY
+      if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_COLD
       {
         // _error("could not deserialize data, not enough bytes in buffer", Status::MISSING_BYTES);
-        _backend::_status = Status::MISSING_BYTES;
+        _backend::_info = Info::MISSING_BYTES;
         return;
       }
 
@@ -470,19 +478,19 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("size_t");
 
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
         // _error("could not deserialize data, buffer is empty", Status::EMPTY_BUFFER);
-        _backend::_status = Status::EMPTY_BUFFER;
+        _backend::_info = Info::EMPTY_BUFFER;
         return;
       }
 
       uint8_t bytes_used = _buffer[_front_of_buffer++];
 
-      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_UNLIKELY
+      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
       {
         // _error("could not deserialize data, not enough bytes in buffer", Status::MISSING_BYTES);
-        _backend::_status = Status::MISSING_BYTES;
+        _backend::_info = Info::MISSING_BYTES;
         return;
       }
 
@@ -907,14 +915,14 @@ namespace Seiriakos
     void _serialization_implementation(const std::tuple<T...>&)
     {
       // _error("tuples are not implemented yet", Status::NOT_IMPLEMENTED_YET);
-      _backend::_status = Status::NOT_IMPLEMENTED_YET;
+      _backend::_info = Info::NOT_IMPLEMENTED_YET;
     }
 
     template<typename... T>
     void _deserialization_implementation(std::tuple<T...>&)
     {
       // _error("tuples are not implemented yet", Status::NOT_IMPLEMENTED_YET);
-      _backend::_status = Status::NOT_IMPLEMENTED_YET;
+      _backend::_info = Info::NOT_IMPLEMENTED_YET;
     }
   }
 //----------------------------------------------------------------------------------------------------------------------

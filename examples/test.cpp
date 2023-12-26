@@ -1,4 +1,4 @@
-// #define SEIRIAKOS_LOGGING
+#define SEIRIAKOS_LOGGING
 #include "../include/Seiriakos.hpp"
 #define CHRONOMETRO_WARNINGS
 #include "../include/Chronometro.hpp"
