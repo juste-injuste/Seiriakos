@@ -25,7 +25,7 @@ struct SDS final : public Seiriakos::Serializable
 
 struct Something final : public Seiriakos::Serializable
 {
-  std::array<uint8_t, 5> a = {'h', 'e', 'a', 'd', '\0'};
+  std::array<uint8_t, 555> a = {'h', 'e', 'a', 'd', '\0'};
   std::string b = "allo";
   SDS c;
   std::tuple<int, std::tuple<int, float>> d = {2, {7, 3.1415}};

@@ -120,8 +120,10 @@ namespace Seiriakos
   namespace _backend
   {
 # if defined(__clang__) and (__clang_major__ >= 12)
+#   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
 # elif defined(__GNUC__) and (__GNUC__ >= 9)
+#   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
 # else
 #   define SEIRIAKOS_COLD
@@ -499,7 +501,7 @@ namespace Seiriakos
     void _serialization_implementation(const std::array<T, N>& array)
     {
       SEIRIAKOS_ILOG("std::array");
-      
+
       for (const auto& value : array)
       {
         _serialization_implementation(value);
@@ -510,10 +512,32 @@ namespace Seiriakos
     void _deserialization_implementation(std::array<T, N>& array)
     {
       SEIRIAKOS_ILOG("std::array");
-      
-      for (auto& value : array)
+
+      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _deserialization_implementation(value);
+        if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+        {
+          _info = Info::EMPTY_BUFFER;
+          return;
+        }
+
+        if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
+        {
+          _info = Info::MISSING_BYTES;
+          return;
+        }
+
+        for (auto& value : array)
+        {
+          _generic_deserialization<T, false>::implementation(value);
+        }
+      }
+      else
+      {
+        for (auto& value : array)
+        {
+          _deserialization_implementation(value);
+        }
       }
     }
 
