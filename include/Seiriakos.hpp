@@ -343,11 +343,13 @@ namespace Seiriakos
     void _serialization_implementation(const T& data)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>());
+      
+      const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
 
       // add data's bytes one by one to the buffer
-      for (size_t k = 0; k < sizeof(T); ++k)
+      for (size_t k = sizeof(T); k ; --k)
       {
-        _buffer.push_back(reinterpret_cast<const uint8_t*>(&data)[k]);
+        _buffer.push_back(*data_ptr++);
       }
     }
 

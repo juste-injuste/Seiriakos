@@ -1,4 +1,4 @@
-#define SEIRIAKOS_LOGGING
+// #define SEIRIAKOS_LOGGING
 #include "../include/Seiriakos.hpp"
 #define CHRONOMETRO_WARNINGS
 #include "../include/Chronometro.hpp"
@@ -44,8 +44,8 @@ int main()
   std::vector<uint8_t> serialized;
   Something decoded;
 
-// loop:
-  CHRONOMETRO_MEASURE()
+loop:
+  CHRONOMETRO_MEASURE(1000000)
   serialized = something.serialize();
 
   std::cout << "a:   " << something.a.data() << '\n';
@@ -60,9 +60,9 @@ int main()
     std::cout << "     " << pair.first << " " << pair.second << '\n';
   }
 
-  std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
+  // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
-  CHRONOMETRO_MEASURE()
+  CHRONOMETRO_MEASURE(1000000)
   decoded.deserialize(serialized.data(), serialized.size());
 
   std::cout << "a:   " << decoded.a.data() << '\n';
@@ -71,17 +71,12 @@ int main()
   std::cout << "d10: " << std::get<0>(std::get<1>(decoded.d)) << '\n';
   std::cout << "d11: " << std::get<1>(std::get<1>(decoded.d)) << '\n';
   std::cout << "e:   " << decoded.e << '\n';
-  std::cout << "f:   ";
+  std::cout << "f:   " << '\n';
   for (auto& pair : decoded.f)
   {
-    std::cout << pair.first << " " << pair.second << '\n' << "     ";
+    std::cout << "     " << pair.first << " " << pair.second << '\n';
   }
 
-//   CHRONOMETRO_MEASURE_LAPS(10, "iteration %# took: %ms")
-//   {
-//     sleep_for_ms(100);
-//   }
-
-  // std::cin.get();
-  // goto loop;
+  std::cin.get();
+  goto loop;
 }
