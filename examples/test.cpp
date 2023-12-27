@@ -25,8 +25,8 @@ struct SDS final : public Seiriakos::Serializable
 
 struct Something final : public Seiriakos::Serializable
 {
-  std::array<uint8_t, 555> a = {'h', 'e', 'a', 'd', '\0'};
-  std::string b = "allo";
+  std::array<uint8_t, 5> a = {'h', 'e', 'a', 'd', '\0'};
+  std::string b = "allo ceci est une string de taille moyennement grande";
   SDS c;
   std::tuple<int, std::tuple<int, float>> d = {2, {7, 3.1415}};
   std::string e = "bye";
@@ -34,7 +34,7 @@ struct Something final : public Seiriakos::Serializable
   std::map<int, std::string> f = {{1, "one"}, {2, "two"}, {3, "three"}};
   std::vector<double> g = {0, 1, 2, 3, 4, 5, 6, 7};
 
-  SEIRIAKOS_SEQUENCE(a, b, c, d, e, g);
+  SEIRIAKOS_SEQUENCE(b);
 };
 
 int main()
@@ -44,10 +44,10 @@ int main()
   Something something;
   std::vector<uint8_t> serialized;
   Something decoded;
-  something.g.resize(1000);
+  // something.g.resize(1000);
 
 loop:
-  CHRONOMETRO_MEASURE(100000)
+  CHRONOMETRO_MEASURE(1000000)
   serialized = something.serialize();
 
   std::cout << "a:   " << something.a.data() << '\n';
@@ -69,7 +69,7 @@ loop:
 
   // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
-  CHRONOMETRO_MEASURE(100000)
+  CHRONOMETRO_MEASURE(1000000)
   decoded.deserialize(serialized.data(), serialized.size());
 
   std::cout << "a:   " << decoded.a.data() << '\n';

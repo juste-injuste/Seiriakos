@@ -469,23 +469,20 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::basic_string");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
-      string.clear();
-      string.reserve(size);
-
+      string.resize(size);
+      
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
         _fundamental_deserialization<T>::implementation(string[0], size);
       }
       else
       {
-        T character = {};
-        for (size_t k = size; k--;)
+        for (auto& character : string)
         {
           _deserialization_implementation(character);
-          string += character;
         }
       }
     }
@@ -537,25 +534,20 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::vector");
 
-      vector.clear();
-
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
-      vector.reserve(size);
+      vector.resize(size);
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        vector.resize(size);
         _fundamental_deserialization<T>::implementation(vector[0], size);
       }
       else
       {
-        T value = {};
-        for (size_t k = 0; k < size; ++k)
+        for (auto& value : vector)
         {
           _deserialization_implementation(value);
-          vector.push_back(value);
         }
       }
     }
@@ -578,16 +570,13 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::list");
 
-      list.clear();
-
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
-      T value = {};
-      for (size_t k = 0; k < size; ++k)
+      list.resize(size);
+      for (auto& value : list)
       {
         _deserialization_implementation(value);
-        list.push_back(value);
       }
     }
 
@@ -609,16 +598,13 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::deque");
 
-      deque.clear();
-
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
-
-      T value = {};
-      for (size_t k = 0; k < size; ++k)
+      
+      deque.resize(size);
+      for (auto& value : deque)
       {
         _deserialization_implementation(value);
-        deque.push_back(value);
       }
     }
 
@@ -658,10 +644,11 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::unordered_map");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       unordered_map.clear();
+      unordered_map.reserve(size);
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
@@ -689,10 +676,11 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::unordered_multimap");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       unordered_multimap.clear();
+      unordered_multimap.reserve(size);
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
@@ -720,7 +708,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::map");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       map.clear();
@@ -751,7 +739,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::multimap");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       multimap.clear();
@@ -782,10 +770,11 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::unordered_set");
 
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       unordered_set.clear();
+      unordered_set.reserve(size);
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
@@ -813,10 +802,11 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::unordered_multiset");
       
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       unordered_multiset.clear();
+      unordered_multiset.reserve(size);
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
@@ -844,7 +834,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::set");
       
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       set.clear();
@@ -875,7 +865,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::multiset");
       
-      size_t size = 0;
+      size_t size = {};
       size_t_deserialization_implementation(size);
 
       multiset.clear();
