@@ -47,6 +47,7 @@ deserialize objects.
 #include <sstream>     // for std::stringstream
 #include <iomanip>     // for std::setw, std::setfill, std::hex
 #include <ios>         // for std::uppercase
+#include <cstring>     // for std::memcpy
 #if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
 # define  SEIRIAKOS_THREADSAFE
 # include <atomic>     // for std::atomic
@@ -360,21 +361,22 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
-        _backend::_info = Info::EMPTY_BUFFER;
+        _info = Info::EMPTY_BUFFER;
         return;
       }
 
       if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_COLD
       {
-        _backend::_info = Info::MISSING_BYTES;
+        _info = Info::MISSING_BYTES;
         return;
       }
-
+      
       // set data's bytes one by one from the front of the buffer
-      for (size_t k = 0; k < sizeof(T); ++k)
-      {
-        reinterpret_cast<uint8_t*>(&data)[k] = _buffer[_front_of_buffer++];
-      }
+      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
+      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
+      std::memcpy(data_ptr, _buffer_ptr, sizeof(T));
+
+      _front_of_buffer += sizeof(T);
     }
 
     void size_t_serialization_implementation(size_t size)
