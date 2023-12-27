@@ -354,29 +354,54 @@ namespace Seiriakos
       }
     }
 
+    template<typename T, bool C>
+    struct _generic_deserialization;
+
+    template<typename T>
+    struct _generic_deserialization<T, true>
+    {
+      static void implementation(T& data)
+      {
+        if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+        {
+          _info = Info::EMPTY_BUFFER;
+          return;
+        }
+
+        if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_COLD
+        {
+          _info = Info::MISSING_BYTES;
+          return;
+        }
+
+        // set data's bytes one by one from the front of the buffer
+        uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
+        uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
+        std::memcpy(data_ptr, _buffer_ptr, sizeof(T));
+
+        _front_of_buffer += sizeof(T);
+      }
+    };
+
+    template<typename T>
+    struct _generic_deserialization<T, false>
+    {
+      static void implementation(T& data)
+      {
+        // set data's bytes one by one from the front of the buffer
+        uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
+        uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
+        std::memcpy(data_ptr, _buffer_ptr, sizeof(T));
+
+        _front_of_buffer += sizeof(T);
+      }
+    };
+
     template<typename T, typename>
     void _deserialization_implementation(T& data)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>());
-
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
-      {
-        _info = Info::EMPTY_BUFFER;
-        return;
-      }
-
-      if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_COLD
-      {
-        _info = Info::MISSING_BYTES;
-        return;
-      }
-
-      // set data's bytes one by one from the front of the buffer
-      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
-      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
-      std::memcpy(data_ptr, _buffer_ptr, sizeof(T));
-
-      _front_of_buffer += sizeof(T);
+      _generic_deserialization<T, true>::implementation(data);
     }
 
     void size_t_serialization_implementation(size_t size)
