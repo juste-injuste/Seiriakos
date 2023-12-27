@@ -18,16 +18,16 @@ void sleep_for_ms(std::chrono::high_resolution_clock::rep ms)
 // serializable data structure
 struct SDS final : public Seiriakos::Serializable
 {
-  uint16_t a;
+  uint16_t a = 0xFFFF;
 
   SEIRIAKOS_SEQUENCE(a);
 };
 
 struct Something final : public Seiriakos::Serializable
 {
-  std::array<uint8_t, 15500> a;
+  std::array<uint8_t, 5> a = {'h', 'e', 'a', 'd', '\0'};
   std::string b = "allo";
-  SDS c         = {};
+  SDS c;
   std::tuple<int, std::tuple<int, float>> d = {2, {7, 3.1415}};
   std::string e = "bye";
 
@@ -48,6 +48,7 @@ int main()
   CHRONOMETRO_MEASURE()
   serialized = something.serialize();
 
+  std::cout << "a:   " << something.a.data() << '\n';
   std::cout << "b:   " << something.b << '\n';
   std::cout << "d0:  " << std::get<0>(something.d) << '\n';
   std::cout << "d10: " << std::get<0>(std::get<1>(something.d)) << '\n';
@@ -59,11 +60,12 @@ int main()
     std::cout << "     " << pair.first << " " << pair.second << '\n';
   }
 
-  // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
+  std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
   CHRONOMETRO_MEASURE()
   decoded.deserialize(serialized.data(), serialized.size());
 
+  std::cout << "a:   " << decoded.a.data() << '\n';
   std::cout << "b:   " << decoded.b << '\n';
   std::cout << "d0:  " << std::get<0>(decoded.d) << '\n';
   std::cout << "d10: " << std::get<0>(std::get<1>(decoded.d)) << '\n';

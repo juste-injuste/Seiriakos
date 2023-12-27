@@ -225,6 +225,11 @@ namespace Seiriakos
     template<typename T> inline
     void _deserialization_implementation(std::basic_string<T>& string);
 
+    template<typename T, size_t N> inline
+    void _serialization_implementation(const std::array<T, N>& array);
+    template<typename T, size_t N> inline
+    void _deserialization_implementation(std::array<T, N>& array);
+
     template<typename T> inline
     void _serialization_implementation(const std::vector<T>& vector);
     template<typename T> inline
@@ -462,6 +467,28 @@ namespace Seiriakos
       {
         _deserialization_implementation(character);
         string += character;
+      }
+    }
+
+    template<typename T, size_t N>
+    void _serialization_implementation(const std::array<T, N>& array)
+    {
+      SEIRIAKOS_ILOG("std::array");
+      
+      for (const auto& value : array)
+      {
+        _serialization_implementation(value);
+      }
+    }
+
+    template<typename T, size_t N>
+    void _deserialization_implementation(std::array<T, N>& array)
+    {
+      SEIRIAKOS_ILOG("std::array");
+      
+      for (auto& value : array)
+      {
+        _deserialization_implementation(value);
       }
     }
 
