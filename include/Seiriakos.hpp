@@ -358,14 +358,12 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
-        // _error("could not deserialize data, buffer is empty", Status::EMPTY_BUFFER);
         _backend::_info = Info::EMPTY_BUFFER;
         return;
       }
 
       if ((_buffer.size() - _front_of_buffer) < sizeof(T)) SEIRIAKOS_COLD
       {
-        // _error("could not deserialize data, not enough bytes in buffer", Status::MISSING_BYTES);
         _backend::_info = Info::MISSING_BYTES;
         return;
       }
@@ -400,7 +398,6 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
-        // _error("could not deserialize data, buffer is empty", Status::EMPTY_BUFFER);
         _backend::_info = Info::EMPTY_BUFFER;
         return;
       }
@@ -409,7 +406,6 @@ namespace Seiriakos
 
       if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
       {
-        // _error("could not deserialize data, not enough bytes in buffer", Status::MISSING_BYTES);
         _backend::_info = Info::MISSING_BYTES;
         return;
       }
@@ -929,7 +925,6 @@ namespace Seiriakos
 
     if (_backend::_front_of_buffer != _backend::_buffer.size())
     {
-      // _backend::_error("buffer is not empty, serialization/deserialization sequence mismatch", Status::SEQUENCE_MISMATCH);
       _backend::_info = Info::SEQUENCE_MISMATCH;
     }
 
