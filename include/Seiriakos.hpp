@@ -49,8 +49,8 @@ deserialize objects.
 #include <ios>         // for std::uppercase
 #if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
 # define  SEIRIAKOS_THREADSAFE
-# include <mutex>      // for std::mutex, std::lock_guard
 # include <atomic>     // for std::atomic
+# include <mutex>      // for std::mutex, std::lock_guard
 #endif 
 #if defined(SEIRIAKOS_LOGGING)
 #if defined(__GNUC__)
@@ -127,15 +127,15 @@ namespace Seiriakos
 # endif
 
 # if defined(SEIRIAKOS_THREADSAFE)
-#   define SEIRIAKOS_THREADLOCAL      thread_local
-#   define SEIRIAKOS_ATOMIC(T)        std::atomic<T>
-#   define SEIRIAKOS_MAKE_MUTEX(NAME) static std::mutex NAME
-#   define SEIRIAKOS_LOCK(MUTEX)      std::lock_guard<decltype(MUTEX)> _lock{MUTEX}
+#   define SEIRIAKOS_THREADLOCAL     thread_local
+#   define SEIRIAKOS_ATOMIC(T)       std::atomic<T>
+#   define SEIRIAKOS_MAKE_MUTEX(...) static std::mutex __VA_ARGS__
+#   define SEIRIAKOS_LOCK(MUTEX)     std::lock_guard<decltype(MUTEX)> _lock{MUTEX}
 # else
 #   define SEIRIAKOS_THREADLOCAL
-#   define SEIRIAKOS_ATOMIC(T)        T
-#   define SEIRIAKOS_MAKE_MUTEX(NAME)
-#   define SEIRIAKOS_LOCK(MUTEX)
+#   define SEIRIAKOS_ATOMIC(T)       T
+#   define SEIRIAKOS_MAKE_MUTEX(...)
+#   define SEIRIAKOS_LOCK(MUTEX)     void(0)
 # endif
 
     static SEIRIAKOS_THREADLOCAL std::vector<uint8_t> _buffer;
@@ -457,7 +457,7 @@ namespace Seiriakos
 
       string.clear();
 
-      T character = '\n';
+      T character = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(character);
@@ -490,7 +490,7 @@ namespace Seiriakos
 
       vector.reserve(size);
 
-      T value;
+      T value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(value);
@@ -521,7 +521,7 @@ namespace Seiriakos
       size_t size = 0;
       size_t_deserialization_implementation(size);
 
-      T value;
+      T value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(value);
@@ -601,7 +601,7 @@ namespace Seiriakos
 
       unordered_map.clear();
 
-      std::pair<T1, T2> key_value;
+      std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
@@ -632,7 +632,7 @@ namespace Seiriakos
 
       unordered_multimap.clear();
 
-      std::pair<T1, T2> key_value;
+      std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
@@ -663,7 +663,7 @@ namespace Seiriakos
 
       map.clear();
 
-      std::pair<T1, T2> key_value;
+      std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
@@ -694,7 +694,7 @@ namespace Seiriakos
 
       multimap.clear();
 
-      std::pair<T1, T2> key_value;
+      std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
@@ -725,7 +725,7 @@ namespace Seiriakos
 
       unordered_set.clear();
 
-      T key;
+      T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
@@ -756,7 +756,7 @@ namespace Seiriakos
 
       unordered_multiset.clear();
 
-      T key;
+      T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
@@ -787,7 +787,7 @@ namespace Seiriakos
 
       set.clear();
 
-      T key;
+      T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
@@ -818,7 +818,7 @@ namespace Seiriakos
 
       multiset.clear();
 
-      T key;
+      T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
@@ -939,5 +939,12 @@ namespace Seiriakos
   }
 //----------------------------------------------------------------------------------------------------------------------
 }
+#undef SEIRIAKOS_THREADSAFE
+#undef SEIRIAKOS_THREADLOCAL
+#undef SEIRIAKOS_ATOMIC
+#undef SEIRIAKOS_MAKE_MUTEX
+#undef SEIRIAKOS_LOCK
+#undef SEIRIAKOS_COLD
 #undef SEIRIAKOS_ILOG
+#undef SEIRIAKOS_LOG
 #endif
