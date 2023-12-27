@@ -370,7 +370,7 @@ namespace Seiriakos
         _info = Info::MISSING_BYTES;
         return;
       }
-      
+
       // set data's bytes one by one from the front of the buffer
       uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
       uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
@@ -402,7 +402,7 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
-        _backend::_info = Info::EMPTY_BUFFER;
+        _info = Info::EMPTY_BUFFER;
         return;
       }
 
@@ -410,7 +410,7 @@ namespace Seiriakos
 
       if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
       {
-        _backend::_info = Info::MISSING_BYTES;
+        _info = Info::MISSING_BYTES;
         return;
       }
 
