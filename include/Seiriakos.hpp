@@ -348,7 +348,7 @@ namespace Seiriakos
       const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
 
       // add data's bytes one by one to the buffer
-      for (size_t k = sizeof(T); k ; --k)
+      for (size_t k = sizeof(T); k--;)
       {
         _buffer.push_back(*data_ptr++);
       }
