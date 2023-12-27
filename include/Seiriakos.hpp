@@ -356,15 +356,13 @@ namespace Seiriakos
       }
     }
 
-    template<typename T, size_t N = 1>
-    struct _generic_deserialization
+    template<typename T>
+    struct _fundamental_deserialization
     {
-      static void implementation(T& data)
+      template<size_t N = 1>
+      static void implementation(T& data, const size_t N_ = N)
       {
-        for (size_t k = N; k--;)
-        {
-          SEIRIAKOS_ILOG(_underlying_name<T>());
-        }
+        SEIRIAKOS_ILOG(_underlying_name<T>() + (N_ > 1 ? " x" + std::to_string(N_) : ""));
 
         if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
         {
@@ -372,7 +370,7 @@ namespace Seiriakos
           return;
         }
 
-        if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
+        if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N_)) SEIRIAKOS_COLD
         {
           _info = Info::MISSING_BYTES;
           return;
@@ -381,16 +379,16 @@ namespace Seiriakos
         // set data's bytes one by one from the front of the buffer
         uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
         uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
-        std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N);
+        std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N_);
 
-        _front_of_buffer += sizeof(T) * N;
+        _front_of_buffer += sizeof(T) * N_;
       }
     };
 
     template<typename T, typename>
     void _deserialization_implementation(T& data)
     {
-      _generic_deserialization<T>::implementation(data);
+      _fundamental_deserialization<T>::implementation(data);
     }
 
     void size_t_serialization_implementation(size_t size)
@@ -456,7 +454,7 @@ namespace Seiriakos
     template<typename T>
     void _serialization_implementation(const std::basic_string<T>& string)
     {
-      SEIRIAKOS_ILOG("std::string");
+      SEIRIAKOS_ILOG("std::basic_string");
 
       size_t_serialization_implementation(string.size());
 
@@ -469,18 +467,26 @@ namespace Seiriakos
     template<typename T>
     void _deserialization_implementation(std::basic_string<T>& string)
     {
-      SEIRIAKOS_ILOG("std::string");
+      SEIRIAKOS_ILOG("std::basic_string");
 
       size_t size = 0;
       size_t_deserialization_implementation(size);
 
       string.clear();
+      string.reserve(size);
 
-      T character = {};
-      for (size_t k = 0; k < size; ++k)
+      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _deserialization_implementation(character);
-        string += character;
+        _fundamental_deserialization<T>::implementation(string[0], size);
+      }
+      else
+      {
+        T character = {};
+        for (size_t k = size; k--;)
+        {
+          _deserialization_implementation(character);
+          string += character;
+        }
       }
     }
 
@@ -502,7 +508,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _generic_deserialization<T, N>::implementation(array[0]);
+        _fundamental_deserialization<T>::template implementation<N>(array[0]);
       }
       else
       {
@@ -538,11 +544,19 @@ namespace Seiriakos
 
       vector.reserve(size);
 
-      T value = {};
-      for (size_t k = 0; k < size; ++k)
+      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _deserialization_implementation(value);
-        vector.push_back(value);
+        vector.resize(size);
+        _fundamental_deserialization<T>::implementation(vector[0], size);
+      }
+      else
+      {
+        T value = {};
+        for (size_t k = 0; k < size; ++k)
+        {
+          _deserialization_implementation(value);
+          vector.push_back(value);
+        }
       }
     }
 
