@@ -881,6 +881,7 @@ namespace Seiriakos
     template<size_t N, typename... T>
     struct _tuple_serialization
     {
+      inline
       static void implementation(const std::tuple<T...>& tuple);
     };
 
@@ -908,6 +909,7 @@ namespace Seiriakos
     template<size_t N, typename... T>
     struct _tuple_deserialization
     {
+      inline
       static void implementation(std::tuple<T...>& tuple);
     };
 
