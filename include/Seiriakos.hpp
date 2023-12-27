@@ -288,7 +288,7 @@ namespace Seiriakos
     template<typename... T> inline
     void _serialization_implementation(const std::tuple<T...>& tuple);
     template<typename... T> inline
-    void _deserialization_implementation(std::multiset<T...>& tuple);
+    void _deserialization_implementation(std::tuple<T...>& tuple);
   }
 //----------------------------------------------------------------------------------------------------------------------
   class Serializable
@@ -826,18 +826,58 @@ namespace Seiriakos
       }
     }
 
-    template<typename... T>
-    void _serialization_implementation(const std::tuple<T...>&)
+    template<size_t N, typename... T>
+    struct _tuple_serialization
     {
-      // _error("tuples are not implemented yet", Status::NOT_IMPLEMENTED_YET);
-      _backend::_info = Info::NOT_IMPLEMENTED_YET;
+      static void implementation(const std::tuple<T...>& tuple);
+    };
+
+    template<typename... T>
+    struct _tuple_serialization<0, T...>
+    {
+      static void implementation(const std::tuple<T...>&) {}
+    };
+
+    template<size_t N, typename... T>
+    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple)
+    {
+      _serialization_implementation(std::get<sizeof...(T) - N>(tuple));
+      _tuple_serialization<N-1, T...>::implementation(tuple);
     }
 
     template<typename... T>
-    void _deserialization_implementation(std::tuple<T...>&)
+    void _serialization_implementation(const std::tuple<T...>& tuple)
     {
-      // _error("tuples are not implemented yet", Status::NOT_IMPLEMENTED_YET);
-      _backend::_info = Info::NOT_IMPLEMENTED_YET;
+      SEIRIAKOS_ILOG("std::tuple");
+
+      _tuple_serialization<sizeof...(T), T...>::implementation(tuple);
+    }
+
+    template<size_t N, typename... T>
+    struct _tuple_deserialization
+    {
+      static void implementation(std::tuple<T...>& tuple);
+    };
+
+    template<typename... T>
+    struct _tuple_deserialization<0, T...>
+    {
+      static void implementation(std::tuple<T...>&) {}
+    };
+
+    template<size_t N, typename... T>
+    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple)
+    {
+      _deserialization_implementation(std::get<sizeof...(T) - N>(tuple));
+      _tuple_deserialization<N-1, T...>::implementation(tuple);
+    }
+
+    template<typename... T>
+    void _deserialization_implementation(std::tuple<T...>& tuple)
+    {
+      SEIRIAKOS_ILOG("std::tuple");
+
+      _tuple_deserialization<sizeof...(T), T...>::implementation(tuple);
     }
   }
 //----------------------------------------------------------------------------------------------------------------------
@@ -909,7 +949,7 @@ namespace Seiriakos
 
   const char* bytes_as_cstring(const uint8_t data[], const size_t size)
   {
-    static SEIRIAKOS_THREADLOCAL std::vector<char> buffer;
+    SEIRIAKOS_THREADLOCAL static std::vector<char> buffer;
     
     if (data == nullptr)
     {
@@ -921,6 +961,8 @@ namespace Seiriakos
     {
       buffer = std::vector<char>(3*size + 1);
     }
+
+    buffer.clear();
 
     for (size_t k = 0; k < size; ++k)
     {
