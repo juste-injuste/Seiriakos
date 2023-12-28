@@ -405,7 +405,7 @@ namespace Seiriakos
       data.deserialization_sequence(); // serialize data via its specialized implementation
     }
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::complex<T>& complex)
     {
       SEIRIAKOS_ILOG("std::complex");
@@ -414,7 +414,7 @@ namespace Seiriakos
       _serialization_implementation(complex.imag);
     }
 
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::complex<T>& complex)
     {
       SEIRIAKOS_ILOG("std::complex");
