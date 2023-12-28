@@ -115,19 +115,18 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
+#   define SEIRIAKOS_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
+#   define SEIRIAKOS_CLANG_IGNORE(WARNING, ...)          \
+      SEIRIAKOS_PRAGMA(clang diagnostic push)            \
+      SEIRIAKOS_PRAGMA(clang diagnostic ignored WARNING) \
+      __VA_ARGS__                                        \
+      SEIRIAKOS_PRAGMA(clang diagnostic pop)
+
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define SEIRIAKOS_HOT                                       \
-    _Pragma("clang diagnostic push")                           \
-    _Pragma("clang diagnostic ignored \"-Wc++20-extensions\"") \
-    [[likely]]                                                 \
-    _Pragma("clang diagnostic pop")
-#   define SEIRIAKOS_COLD                                      \
-    _Pragma("clang diagnostic push")                           \
-    _Pragma("clang diagnostic ignored \"-Wc++20-extensions\"") \
-    [[unlikely]]                                               \
-    _Pragma("clang diagnostic pop")
+#   define SEIRIAKOS_HOT  SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define SEIRIAKOS_COLD SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
 #   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
@@ -1061,6 +1060,8 @@ namespace Seiriakos
   }
 //----------------------------------------------------------------------------------------------------------------------
 }
+#undef SEIRIAKOS_PRAGMA
+#undef SEIRIAKOS_CLANG_IGNORE
 #undef SEIRIAKOS_THREADSAFE
 #undef SEIRIAKOS_THREADLOCAL
 #undef SEIRIAKOS_ATOMIC
