@@ -342,26 +342,25 @@ namespace Seiriakos
       data.deserialization_sequence(); // serialize data via its specialized implementation
     }
 
-    template<typename T>
-    void _fundamental_serialization_implementation(const T& data, const size_t N = 1)
+    template<typename T> // do not inline, let compiler decide
+    void _fundamental_serialization_implementation(const T& data, const size_t N)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
 
       const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
-              
       _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
     }
 
     template<typename T, typename>
     void _serialization_implementation(const T& data)
-    {
+    {      
       SEIRIAKOS_ILOG(_underlying_name<T>());
 
-      _fundamental_serialization_implementation(data);
+      _fundamental_serialization_implementation(data, 1);
     }
 
-    template<typename T>
-    void _fundamental_deserialization_implementation(T& data, const size_t N = 1)
+    template<typename T> // do not inline, let compiler decide
+    void _fundamental_deserialization_implementation(T& data, const size_t N)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
 
@@ -388,7 +387,7 @@ namespace Seiriakos
     template<typename T, typename>
     void _deserialization_implementation(T& data)
     {
-      _fundamental_deserialization_implementation(data);
+      _fundamental_deserialization_implementation(data, 1);
     }
 
     void size_t_serialization_implementation(size_t size)
