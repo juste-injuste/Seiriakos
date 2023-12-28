@@ -61,11 +61,6 @@ loop:
   {
     std::cout << "     " << pair.first << " " << pair.second << '\n';
   }
-  // std::cout << "g:   " << '\n';
-  // for (auto& val : something.g)
-  // {
-  //   std::cout << "     " << val << '\n';
-  // }
 
   // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
@@ -83,11 +78,6 @@ loop:
   {
     std::cout << "     " << pair.first << " " << pair.second << '\n';
   }
-  // std::cout << "g:   " << '\n';
-  // for (auto& val : decoded.g)
-  // {
-  //   std::cout << "     " << val << '\n';
-  // }
 
   std::cin.get();
   goto loop;
