@@ -34,7 +34,7 @@ struct Something final : public Seiriakos::Serializable
   std::map<int, std::string> f = {{1, "one"}, {2, "two"}, {3, "three"}};
   std::vector<double> g = {0, 1, 2, 3, 4, 5, 6, 7};
 
-  SEIRIAKOS_SEQUENCE(b);
+  SEIRIAKOS_SEQUENCE(a, b, c, d, e, f, g);
 };
 
 int main()
@@ -44,10 +44,10 @@ int main()
   Something something;
   std::vector<uint8_t> serialized;
   Something decoded;
-  // something.g.resize(1000);
+  something.g.resize(20);
 
 loop:
-  CHRONOMETRO_MEASURE(1000000)
+  CHRONOMETRO_MEASURE(100000)
   serialized = something.serialize();
 
   std::cout << "a:   " << something.a.data() << '\n';
@@ -69,7 +69,7 @@ loop:
 
   // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
-  CHRONOMETRO_MEASURE(1000000)
+  CHRONOMETRO_MEASURE(100000)
   decoded.deserialize(serialized.data(), serialized.size());
 
   std::cout << "a:   " << decoded.a.data() << '\n';
