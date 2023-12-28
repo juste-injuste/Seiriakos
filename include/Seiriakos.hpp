@@ -95,8 +95,7 @@ namespace Seiriakos
   // macro to facilitate serialization/deserialization member function implementations
 # define SEIRIAKOS_SEQUENCE(...)
 
-  // print bytes from memory
-  inline
+  inline // print bytes from memory
   const char* bytes_as_cstring(const uint8_t data[], const size_t size);
 
   namespace Global
@@ -116,13 +115,28 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
+// support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
+# if __cplusplus < 202002L
+#   define SEIRIAKOS_HOT                                       \
+    _Pragma("clang diagnostic push")                           \
+    _Pragma("clang diagnostic ignored \"-Wc++20-extensions\"") \
+    [[likely]]                                                 \
+    _Pragma("clang diagnostic pop")
+#   define SEIRIAKOS_COLD                                      \
+    _Pragma("clang diagnostic push")                           \
+    _Pragma("clang diagnostic ignored \"-Wc++20-extensions\"") \
+    [[unlikely]]                                               \
+    _Pragma("clang diagnostic pop")
+# else
 #   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
-# elif defined(__GNUC__) and (__GNUC__ >= 9)
+# endif
+# elif defined(__GNUC__) and (__GNUC__ >= 10)
 #   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
 # else
+#   define SEIRIAKOS_HOT
 #   define SEIRIAKOS_COLD
 # endif
 
