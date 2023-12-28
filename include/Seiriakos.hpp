@@ -169,7 +169,7 @@ namespace Seiriakos
 
     SEIRIAKOS_ATOMIC(unsigned) _indentlog::indentation;
 
-    template<typename T> inline
+    template<typename T>
     std::string _underlying_name()
     {
       if (std::is_integral<T>::value)
@@ -202,10 +202,8 @@ namespace Seiriakos
 
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
-
-    inline
+   
     void _serialization_implementation(const Serializable& data);
-    inline
     void _deserialization_implementation(Serializable& data);
 
     template<typename T, typename = _if_not_Serializable<T>>
@@ -248,8 +246,7 @@ namespace Seiriakos
 
       // compute minimum amount of bytes needed to serialize
       uint8_t bytes_used = 1;
-      for (size_t k = size; k >>= 8; ++bytes_used)
-      {}
+      for (size_t k = size; k >>= 8; ++bytes_used) {}
 
       _buffer.push_back(bytes_used);
 
@@ -284,84 +281,84 @@ namespace Seiriakos
       }
     }
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::complex<T>& complex);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::complex<T>& complex);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::basic_string<T>& string);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::basic_string<T>& string);
 
-    template<typename T, size_t N> inline
+    template<typename T, size_t N>
     void _serialization_implementation(const std::array<T, N>& array);
-    template<typename T, size_t N> inline
+    template<typename T, size_t N>
     void _deserialization_implementation(std::array<T, N>& array);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::vector<T>& vector);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::vector<T>& vector);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::list<T>& list);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::list<T>& list);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::deque<T>& deque);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::deque<T>& deque);
 
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _serialization_implementation(const std::pair<T1, T2>& pair);
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _deserialization_implementation(std::pair<T1, T2>& pair);
 
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map);
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map);
 
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap);
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap);
 
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _serialization_implementation(const std::map<T1, T2>& map);
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _deserialization_implementation(std::map<T1, T2>& map);
 
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _serialization_implementation(const std::multimap<T1, T2>& multimap);
-    template<typename T1, typename T2> inline
+    template<typename T1, typename T2>
     void _deserialization_implementation(std::multimap<T1, T2>& multimap);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::unordered_set<T>& unordered_set);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::unordered_set<T>& unordered_set);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::set<T>& set);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::set<T>& set);
 
-    template<typename T> inline
+    template<typename T>
     void _serialization_implementation(const std::multiset<T>& multiset);
-    template<typename T> inline
+    template<typename T>
     void _deserialization_implementation(std::multiset<T>& multiset);
 
-    template<typename... T> inline
+    template<typename... T>
     void _serialization_implementation(const std::tuple<T...>& tuple);
-    template<typename... T> inline
+    template<typename... T>
     void _deserialization_implementation(std::tuple<T...>& tuple);
   }
 //----------------------------------------------------------------------------------------------------------------------
