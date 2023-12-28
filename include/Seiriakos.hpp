@@ -208,15 +208,81 @@ namespace Seiriakos
     inline
     void _deserialization_implementation(Serializable& data);
 
-    template<typename T, typename = _if_not_Serializable<T>> inline
-    void _serialization_implementation(const T& data);
-    template<typename T, typename = _if_not_Serializable<T>> inline
-    void _deserialization_implementation(T& data);
+    template<typename T, typename = _if_not_Serializable<T>>
+    void _serialization_implementation(const T& data, size_t N = 1)
+    {
+      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
 
-    inline
-    void size_t_serialization_implementation(size_t size);
-    inline
-    void size_t_deserialization_implementation(size_t& size);
+      const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
+      _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
+    }
+
+    template<typename T, typename = _if_not_Serializable<T>>
+    void _deserialization_implementation(T& data, size_t N = 1)
+    {
+      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
+
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+      {
+        _info = Info::EMPTY_BUFFER;
+        return;
+      }
+
+      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
+      {
+        _info = Info::MISSING_BYTES;
+        return;
+      }
+
+      // set data's bytes one by one from the front of the buffer
+      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
+      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
+      std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N);
+
+      _front_of_buffer += sizeof(T) * N;
+    }
+
+    void size_t_serialization_implementation(size_t size)
+    {
+      SEIRIAKOS_ILOG("size_t");
+
+      // compute minimum amount of bytes needed to serialize
+      uint8_t bytes_used = 1;
+      for (size_t k = size; k >>= 8; ++bytes_used)
+      {}
+
+      _buffer.push_back(bytes_used);
+
+      for (size_t k = 0; bytes_used--; k += 8)
+      {
+        _buffer.push_back(static_cast<uint8_t>((size >> k) & 0xFF));
+      }
+    }
+
+    void size_t_deserialization_implementation(size_t& size)
+    {
+      SEIRIAKOS_ILOG("size_t");
+
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+      {
+        _info = Info::EMPTY_BUFFER;
+        return;
+      }
+
+      uint8_t bytes_used = _buffer[_front_of_buffer++];
+
+      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
+      {
+        _info = Info::MISSING_BYTES;
+        return;
+      }
+
+      size = 0;
+      for (size_t k = 0; bytes_used--; k += 8)
+      {
+        size |= (_buffer[_front_of_buffer++] << k);
+      }
+    }
 
     template<typename T> inline
     void _serialization_implementation(const std::complex<T>& complex);
@@ -342,96 +408,6 @@ namespace Seiriakos
       data.deserialization_sequence(); // serialize data via its specialized implementation
     }
 
-    template<typename T> // do not inline, let compiler decide
-    void _fundamental_serialization_implementation(const T& data, const size_t N)
-    {
-      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
-
-      const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
-      _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
-    }
-
-    template<typename T, typename>
-    void _serialization_implementation(const T& data)
-    {      
-      SEIRIAKOS_ILOG(_underlying_name<T>());
-
-      _fundamental_serialization_implementation(data, 1);
-    }
-
-    template<typename T> // do not inline, let compiler decide
-    void _fundamental_deserialization_implementation(T& data, const size_t N)
-    {
-      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
-
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
-      {
-        _info = Info::EMPTY_BUFFER;
-        return;
-      }
-
-      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
-      {
-        _info = Info::MISSING_BYTES;
-        return;
-      }
-
-      // set data's bytes one by one from the front of the buffer
-      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
-      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
-      std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N);
-
-      _front_of_buffer += sizeof(T) * N;
-    }
-
-    template<typename T, typename>
-    void _deserialization_implementation(T& data)
-    {
-      _fundamental_deserialization_implementation(data, 1);
-    }
-
-    void size_t_serialization_implementation(size_t size)
-    {
-      SEIRIAKOS_ILOG("size_t");
-
-      // compute minimum amount of bytes needed to serialize
-      uint8_t bytes_used = 1;
-      for (size_t k = size; k >>= 8; ++bytes_used)
-      {}
-
-      _buffer.push_back(bytes_used);
-
-      for (size_t k = 0; bytes_used--; k += 8)
-      {
-        _buffer.push_back(static_cast<uint8_t>((size >> k) & 0xFF));
-      }
-    }
-
-    void size_t_deserialization_implementation(size_t& size)
-    {
-      SEIRIAKOS_ILOG("size_t");
-
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
-      {
-        _info = Info::EMPTY_BUFFER;
-        return;
-      }
-
-      uint8_t bytes_used = _buffer[_front_of_buffer++];
-
-      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
-      {
-        _info = Info::MISSING_BYTES;
-        return;
-      }
-
-      size = 0;
-      for (size_t k = 0; bytes_used--; k += 8)
-      {
-        size |= (_buffer[_front_of_buffer++] << k);
-      }
-    }
-
     template<typename T> inline
     void _serialization_implementation(const std::complex<T>& complex)
     {
@@ -459,7 +435,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization_implementation(string[0], string.size());
+        _serialization_implementation(string[0], string.size());
       }
       else
       {
@@ -482,7 +458,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization_implementation(string[0], size);
+        _deserialization_implementation(string[0], size);
       }
       else
       {
@@ -500,7 +476,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization_implementation(array[0], N);
+        _serialization_implementation(array[0], N);
       }
       else
       {
@@ -518,7 +494,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization_implementation(array[0], N);
+        _deserialization_implementation(array[0], N);
       }
       else
       {
@@ -538,7 +514,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization_implementation(vector[0], vector.size());
+        _serialization_implementation(vector[0], vector.size());
       }
       else
       {
@@ -561,7 +537,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization_implementation(vector[0], size);
+        _deserialization_implementation(vector[0], size);
       }
       else
       {
