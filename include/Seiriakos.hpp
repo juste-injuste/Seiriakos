@@ -343,60 +343,52 @@ namespace Seiriakos
     }
 
     template<typename T>
-    struct _fundamental_serialization
+    void _fundamental_serialization_implementation(const T& data, const size_t N = 1)
     {
-      template<size_t N = 1>
-      static void implementation(const T& data, const size_t N_ = N)
-      {
-        SEIRIAKOS_ILOG(_underlying_name<T>() + (N_ > 1 ? " x" + std::to_string(N_) : ""));
+      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
 
-        const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
-                
-        _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N_);
-      }
-    };
+      const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
+              
+      _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
+    }
 
     template<typename T, typename>
     void _serialization_implementation(const T& data)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>());
 
-      _fundamental_serialization<T>::implementation(data);
+      _fundamental_serialization_implementation(data);
     }
 
     template<typename T>
-    struct _fundamental_deserialization
+    void _fundamental_deserialization_implementation(T& data, const size_t N = 1)
     {
-      template<size_t N = 1>
-      static void implementation(T& data, const size_t N_ = N)
+      SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
+
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
       {
-        SEIRIAKOS_ILOG(_underlying_name<T>() + (N_ > 1 ? " x" + std::to_string(N_) : ""));
-
-        if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
-        {
-          _info = Info::EMPTY_BUFFER;
-          return;
-        }
-
-        if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N_)) SEIRIAKOS_COLD
-        {
-          _info = Info::MISSING_BYTES;
-          return;
-        }
-
-        // set data's bytes one by one from the front of the buffer
-        uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
-        uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
-        std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N_);
-
-        _front_of_buffer += sizeof(T) * N_;
+        _info = Info::EMPTY_BUFFER;
+        return;
       }
-    };
+
+      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
+      {
+        _info = Info::MISSING_BYTES;
+        return;
+      }
+
+      // set data's bytes one by one from the front of the buffer
+      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
+      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
+      std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N);
+
+      _front_of_buffer += sizeof(T) * N;
+    }
 
     template<typename T, typename>
     void _deserialization_implementation(T& data)
     {
-      _fundamental_deserialization<T>::implementation(data);
+      _fundamental_deserialization_implementation(data);
     }
 
     void size_t_serialization_implementation(size_t size)
@@ -468,7 +460,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization<T>::implementation(string[0], string.size());
+        _fundamental_serialization_implementation(string[0], string.size());
       }
       else
       {
@@ -491,7 +483,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization<T>::implementation(string[0], size);
+        _fundamental_deserialization_implementation(string[0], size);
       }
       else
       {
@@ -509,7 +501,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization<T>::template implementation<N>(array[0]);
+        _fundamental_serialization_implementation(array[0], N);
       }
       else
       {
@@ -527,7 +519,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization<T>::template implementation<N>(array[0]);
+        _fundamental_deserialization_implementation(array[0], N);
       }
       else
       {
@@ -547,7 +539,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_serialization<T>::implementation(vector[0], vector.size());
+        _fundamental_serialization_implementation(vector[0], vector.size());
       }
       else
       {
@@ -570,7 +562,7 @@ namespace Seiriakos
 
       if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
       {
-        _fundamental_deserialization<T>::implementation(vector[0], size);
+        _fundamental_deserialization_implementation(vector[0], size);
       }
       else
       {
