@@ -44,9 +44,6 @@ deserialize objects.
 #include <vector>      // for std::vector
 #include <type_traits> // for std::is_base_of
 #include <iostream>    // for std::cout, std::cerr
-#include <sstream>     // for std::stringstream
-#include <iomanip>     // for std::setw, std::setfill, std::hex
-#include <ios>         // for std::uppercase
 #include <cstring>     // for std::memcpy
 #if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
 # define  SEIRIAKOS_THREADSAFE
@@ -980,7 +977,7 @@ namespace Seiriakos
 
     return _backend::_info;
   }
-    
+//----------------------------------------------------------------------------------------------------------------------
   std::vector<uint8_t> Serializable::serialize() const noexcept
   {
     return Seiriakos::serialize(*this);
@@ -1004,7 +1001,7 @@ namespace Seiriakos
     _backend::_deserialization_implementation(data);
     deserialization(remaining...);
   }
-
+//----------------------------------------------------------------------------------------------------------------------
 # undef  SEIRIAKOS_SEQUENCE
 # define SEIRIAKOS_SEQUENCE(...)                            \
     private:                                                \
@@ -1016,7 +1013,7 @@ namespace Seiriakos
       {                                                     \
         deserialization(__VA_ARGS__);                       \
       }
-
+//----------------------------------------------------------------------------------------------------------------------
   const char* bytes_as_cstring(const uint8_t data[], const size_t size)
   {
     SEIRIAKOS_THREADLOCAL static std::vector<char> buffer;
