@@ -104,9 +104,9 @@ namespace Seiriakos
 
   namespace Global
   {
-    std::ostream out{std::cout.rdbuf()}; // output ostream
-    std::ostream err{std::cerr.rdbuf()}; // error ostream
-    std::ostream log{std::clog.rdbuf()}; // logging ostream
+    static std::ostream out{std::cout.rdbuf()}; // output ostream
+    static std::ostream err{std::cerr.rdbuf()}; // error ostream
+    static std::ostream log{std::clog.rdbuf()}; // logging ostream
   }
 
   namespace Version
@@ -169,7 +169,7 @@ namespace Seiriakos
 
     SEIRIAKOS_ATOMIC(unsigned) _indentlog::indentation;
 
-    template<typename T>
+    template<typename T> static
     std::string _underlying_name()
     {
       if (std::is_integral<T>::value)
@@ -203,10 +203,13 @@ namespace Seiriakos
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
    
+    static
     void _serialization_implementation(const Serializable& data);
+
+    static
     void _deserialization_implementation(Serializable& data);
 
-    template<typename T, typename = _if_not_Serializable<T>>
+    template<typename T, typename = _if_not_Serializable<T>> static
     void _serialization_implementation(const T& data, size_t N = 1)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
@@ -215,7 +218,7 @@ namespace Seiriakos
       _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
     }
 
-    template<typename T, typename = _if_not_Serializable<T>>
+    template<typename T, typename = _if_not_Serializable<T>> static
     void _deserialization_implementation(T& data, size_t N = 1)
     {
       SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
@@ -240,6 +243,7 @@ namespace Seiriakos
       _front_of_buffer += sizeof(T) * N;
     }
 
+    static
     void size_t_serialization_implementation(size_t size)
     {
       SEIRIAKOS_ILOG("size_t");
@@ -256,6 +260,7 @@ namespace Seiriakos
       }
     }
 
+    static
     void size_t_deserialization_implementation(size_t& size)
     {
       SEIRIAKOS_ILOG("size_t");
@@ -281,84 +286,100 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::complex<T>& complex);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::complex<T>& complex);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::basic_string<T>& string);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::basic_string<T>& string);
 
-    template<typename T, size_t N>
+    template<typename T, size_t N> static
     void _serialization_implementation(const std::array<T, N>& array);
-    template<typename T, size_t N>
+
+    template<typename T, size_t N> static
     void _deserialization_implementation(std::array<T, N>& array);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::vector<T>& vector);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::vector<T>& vector);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::list<T>& list);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::list<T>& list);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::deque<T>& deque);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::deque<T>& deque);
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::pair<T1, T2>& pair);
-    template<typename T1, typename T2>
+
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::pair<T1, T2>& pair);
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map);
-    template<typename T1, typename T2>
+
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map);
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap);
-    template<typename T1, typename T2>
+
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap);
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::map<T1, T2>& map);
-    template<typename T1, typename T2>
+
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::map<T1, T2>& map);
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::multimap<T1, T2>& multimap);
-    template<typename T1, typename T2>
+
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::multimap<T1, T2>& multimap);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::unordered_set<T>& unordered_set);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::unordered_set<T>& unordered_set);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::set<T>& set);
-    template<typename T>
+    
+    template<typename T> static
     void _deserialization_implementation(std::set<T>& set);
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::multiset<T>& multiset);
-    template<typename T>
+
+    template<typename T> static
     void _deserialization_implementation(std::multiset<T>& multiset);
 
-    template<typename... T>
+    template<typename... T> static
     void _serialization_implementation(const std::tuple<T...>& tuple);
-    template<typename... T>
+
+    template<typename... T> static
     void _deserialization_implementation(std::tuple<T...>& tuple);
   }
 //----------------------------------------------------------------------------------------------------------------------
@@ -391,6 +412,7 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
+    static
     void _serialization_implementation(const Serializable& data)
     {
       SEIRIAKOS_ILOG("Serializable");
@@ -398,6 +420,7 @@ namespace Seiriakos
       data.serialization_sequence(); // serialize data via its specialized implementation
     }
 
+    static
     void _deserialization_implementation(Serializable& data)
     {
       SEIRIAKOS_ILOG("Serializable");
@@ -405,7 +428,7 @@ namespace Seiriakos
       data.deserialization_sequence(); // serialize data via its specialized implementation
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::complex<T>& complex)
     {
       SEIRIAKOS_ILOG("std::complex");
@@ -414,7 +437,7 @@ namespace Seiriakos
       _serialization_implementation(complex.imag);
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::complex<T>& complex)
     {
       SEIRIAKOS_ILOG("std::complex");
@@ -423,7 +446,7 @@ namespace Seiriakos
       _deserialization_implementation(complex.imag);
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::basic_string<T>& string)
     {
       SEIRIAKOS_ILOG("std::basic_string");
@@ -443,7 +466,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::basic_string<T>& string)
     {
       SEIRIAKOS_ILOG("std::basic_string");
@@ -466,7 +489,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T, size_t N>
+    template<typename T, size_t N> static
     void _serialization_implementation(const std::array<T, N>& array)
     {
       SEIRIAKOS_ILOG("std::array");
@@ -484,7 +507,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T, size_t N>
+    template<typename T, size_t N> static
     void _deserialization_implementation(std::array<T, N>& array)
     {
       SEIRIAKOS_ILOG("std::array");
@@ -502,7 +525,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::vector<T>& vector)
     {
       SEIRIAKOS_ILOG("std::vector");
@@ -522,7 +545,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::vector<T>& vector)
     {
       SEIRIAKOS_ILOG("std::vector");
@@ -545,7 +568,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::list<T>& list)
     {
       SEIRIAKOS_ILOG("std::list");
@@ -558,7 +581,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::list<T>& list)
     {
       SEIRIAKOS_ILOG("std::list");
@@ -573,7 +596,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::deque<T>& deque)
     {
       SEIRIAKOS_ILOG("std::deque");
@@ -586,7 +609,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::deque<T>& deque)
     {
       SEIRIAKOS_ILOG("std::deque");
@@ -601,7 +624,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::pair<T1, T2>& pair)
     {
       SEIRIAKOS_ILOG("std::pair");
@@ -610,7 +633,7 @@ namespace Seiriakos
       _serialization_implementation(pair.second);
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::pair<T1, T2>& pair)
     {
       SEIRIAKOS_ILOG("std::pair");
@@ -619,7 +642,7 @@ namespace Seiriakos
       _deserialization_implementation(pair.second);
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map)
     {
       SEIRIAKOS_ILOG("std::unordered_map");
@@ -632,7 +655,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map)
     {
       SEIRIAKOS_ILOG("std::unordered_map");
@@ -651,7 +674,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap)
     {
       SEIRIAKOS_ILOG("std::unordered_multimap");
@@ -664,7 +687,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap)
     {
       SEIRIAKOS_ILOG("std::unordered_multimap");
@@ -683,7 +706,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::map<T1, T2>& map)
     {
       SEIRIAKOS_ILOG("std::map");
@@ -696,7 +719,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::map<T1, T2>& map)
     {
       SEIRIAKOS_ILOG("std::map");
@@ -714,7 +737,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _serialization_implementation(const std::multimap<T1, T2>& multimap)
     {
       SEIRIAKOS_ILOG("std::multimap");
@@ -727,7 +750,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T1, typename T2>
+    template<typename T1, typename T2> static
     void _deserialization_implementation(std::multimap<T1, T2>& multimap)
     {
       SEIRIAKOS_ILOG("std::multimap");
@@ -745,7 +768,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::unordered_set<T>& unordered_set)
     {
       SEIRIAKOS_ILOG("std::unordered_set");
@@ -758,7 +781,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::unordered_set<T>& unordered_set)
     {
       SEIRIAKOS_ILOG("std::unordered_set");
@@ -777,7 +800,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset)
     {
       SEIRIAKOS_ILOG("std::unordered_multiset");
@@ -790,7 +813,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset)
     {
       SEIRIAKOS_ILOG("std::unordered_multiset");
@@ -809,7 +832,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::set<T>& set)
     {
       SEIRIAKOS_ILOG("std::set");
@@ -822,7 +845,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::set<T>& set)
     {
       SEIRIAKOS_ILOG("std::set");
@@ -840,7 +863,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _serialization_implementation(const std::multiset<T>& multiset)
     {
       SEIRIAKOS_ILOG("std::multiset");
@@ -853,7 +876,7 @@ namespace Seiriakos
       }
     }
 
-    template<typename T>
+    template<typename T> static
     void _deserialization_implementation(std::multiset<T>& multiset)
     {
       SEIRIAKOS_ILOG("std::multiset");
@@ -891,7 +914,7 @@ namespace Seiriakos
       _tuple_serialization<N-1, T...>::implementation(tuple);
     }
 
-    template<typename... T>
+    template<typename... T> static
     void _serialization_implementation(const std::tuple<T...>& tuple)
     {
       SEIRIAKOS_ILOG("std::tuple");
@@ -919,7 +942,7 @@ namespace Seiriakos
       _tuple_deserialization<N-1, T...>::implementation(tuple);
     }
 
-    template<typename... T>
+    template<typename... T> static
     void _deserialization_implementation(std::tuple<T...>& tuple)
     {
       SEIRIAKOS_ILOG("std::tuple");

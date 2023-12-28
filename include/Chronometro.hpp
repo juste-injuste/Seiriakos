@@ -108,14 +108,16 @@ namespace Chronometro
 
   namespace Global
   {
-    std::ostream out{std::cout.rdbuf()}; // output ostream
-    std::ostream wrn{std::cerr.rdbuf()}; // warning ostream
+    static std::ostream out{std::cout.rdbuf()}; // output ostream
+    static std::ostream wrn{std::cerr.rdbuf()}; // warning ostream
   }
 
+  inline
   std::ostream& operator << (std::ostream& ostream, const Time time) noexcept;
 // --Chronometro library: backend forward declaration-------------------------------------------------------------------
   namespace Backend
   {
+    static
     const char* format_string(const Time time, std::string format, const size_t iteration = 0) noexcept;
 
 # if defined(CHRONOMETRO_NO_WARNINGS)
@@ -311,6 +313,7 @@ namespace Chronometro
 // --Chronometro library: backend definitions---------------------------------------------------------------------------
   namespace Backend
   {
+    static
     const char* format_string(const Time time, std::string format, const size_t iteration) noexcept
     {
       size_t iteration_position = format.find("%#");

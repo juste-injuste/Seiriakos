@@ -8,13 +8,6 @@
 #include <array>
 #include <cerrno>
 
-// scuffed sleep function to demonstrate the basic usage of the library
-void sleep_for_ms(std::chrono::high_resolution_clock::rep ms)
-{
-  std::chrono::high_resolution_clock::time_point start = std::chrono::high_resolution_clock::now();
-  while (std::chrono::nanoseconds(std::chrono::high_resolution_clock::now()-start).count() < ms*1000000);
-}
-
 // serializable data structure
 struct SDS final : public Seiriakos::Serializable
 {
