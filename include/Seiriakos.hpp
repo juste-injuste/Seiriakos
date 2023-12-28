@@ -42,7 +42,7 @@ deserialize objects.
 #include <cstddef>     // for size_t
 #include <cstdint>     // for uint8_t
 #include <vector>      // for std::vector
-#include <type_traits> // for std::is_base_of
+#include <type_traits> // for std::enable_if, std::is_*
 #include <iostream>    // for std::cout, std::cerr
 #include <cstring>     // for std::memcpy
 #if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
@@ -51,7 +51,7 @@ deserialize objects.
 # include <mutex>      // for std::mutex, std::lock_guard
 #endif 
 #if defined(SEIRIAKOS_LOGGING)
-#if defined(__GNUC__)
+#if defined (__clang__) or defined(__GNUC__)
 # include <cxxabi.h>   // for abi::__cxa_demangle
 #endif
 # include <typeinfo>   // for typeid
@@ -165,7 +165,7 @@ namespace Seiriakos
         SEIRIAKOS_MAKE_MUTEX(mtx);
         SEIRIAKOS_LOCK(mtx);
 
-        for (unsigned k = indentation++; k; --k)
+        for (unsigned k = _indentation()++; k; --k)
         {
           Global::log << "  ";
         }
@@ -173,12 +173,11 @@ namespace Seiriakos
         Global::log << text << std::endl;
       }
 
-      ~_indentlog() noexcept { --indentation; }
+      ~_indentlog() noexcept { --_indentation(); }
     private:
-      static SEIRIAKOS_ATOMIC(unsigned) indentation;
+      static SEIRIAKOS_ATOMIC(unsigned)& _indentation()
+      { static SEIRIAKOS_ATOMIC(unsigned) indentation = {0}; return indentation; };
     };
-
-    SEIRIAKOS_ATOMIC(unsigned) _indentlog::indentation;
 
     template<typename T> static
     std::string _underlying_name()
