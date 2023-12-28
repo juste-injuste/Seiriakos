@@ -366,7 +366,7 @@ namespace Seiriakos
 
     template<typename T> static
     void _serialization_implementation(const std::set<T>& set);
-    
+
     template<typename T> static
     void _deserialization_implementation(std::set<T>& set);
 
@@ -1056,6 +1056,7 @@ namespace Seiriakos
 #undef SEIRIAKOS_ATOMIC
 #undef SEIRIAKOS_MAKE_MUTEX
 #undef SEIRIAKOS_LOCK
+#undef SEIRIAKOS_HOT
 #undef SEIRIAKOS_COLD
 #undef SEIRIAKOS_ILOG
 #undef SEIRIAKOS_LOG
