@@ -58,6 +58,7 @@ deserialize objects.
 # include <cstdlib>    // for std::free
 #endif
 //-------------------
+#include <array>
 #include <complex>
 #include <vector>
 #include <list>
@@ -116,17 +117,28 @@ namespace Seiriakos
   namespace _backend
   {
 #   define SEIRIAKOS_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
-#   define SEIRIAKOS_CLANG_IGNORE(WARNING, ...)          \
+
+# if defined(__clang__)
+#   define SEIRIAKOS_IGNORE(WARNING, ...)                \
       SEIRIAKOS_PRAGMA(clang diagnostic push)            \
       SEIRIAKOS_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
       SEIRIAKOS_PRAGMA(clang diagnostic pop)
+# elif defined(__GNUC__)
+#   define SEIRIAKOS_IGNORE(WARNING, ...)              \
+      SEIRIAKOS_PRAGMA(GCC diagnostic push)            \
+      SEIRIAKOS_PRAGMA(GCC diagnostic ignored WARNING) \
+      __VA_ARGS__                                      \
+      SEIRIAKOS_PRAGMA(GCC diagnostic pop)
+# else
+#   define SEIRIAKOS_IGNORE(WARNING, ...)
+#endif
 
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define SEIRIAKOS_HOT  SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
-#   define SEIRIAKOS_COLD SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define SEIRIAKOS_HOT  SEIRIAKOS_IGNORE("-Wc++20-extensions", [[likely]])
+#   define SEIRIAKOS_COLD SEIRIAKOS_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
 #   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
@@ -137,6 +149,15 @@ namespace Seiriakos
 # else
 #   define SEIRIAKOS_HOT
 #   define SEIRIAKOS_COLD
+# endif
+
+// support from clang 3.9.0 and GCC 5.1 onward
+# if defined(__clang__)
+#   define SEIRIAKOS_MAYBE_UNUSED __attribute__((unused))
+# elif defined(__GNUC__)
+#   define SEIRIAKOS_MAYBE_UNUSED __attribute__((unused))
+# else
+#   define SEIRIAKOS_MAYBE_UNUSED
 # endif
 
 # if defined(SEIRIAKOS_THREADSAFE)
@@ -159,12 +180,12 @@ namespace Seiriakos
     class _indentlog
     {
     public:
-      _indentlog(std::string text) noexcept
+      _indentlog(const std::string& text) noexcept
       {
         SEIRIAKOS_MAKE_MUTEX(mtx);
         SEIRIAKOS_LOCK(mtx);
 
-        for (unsigned k = _indentation()++; k; --k)
+        for (unsigned k = _indentation()++; k--;)
         {
           Global::log << "  ";
         }
@@ -174,8 +195,11 @@ namespace Seiriakos
 
       ~_indentlog() noexcept { --_indentation(); }
     private:
-      static SEIRIAKOS_ATOMIC(unsigned)& _indentation()
-      { static SEIRIAKOS_ATOMIC(unsigned) indentation = {0}; return indentation; };
+      SEIRIAKOS_ATOMIC(unsigned)& _indentation()
+      {
+        static SEIRIAKOS_ATOMIC(unsigned) indentation = {0};
+        return indentation;
+      };
     };
 
     template<typename T> static
@@ -189,17 +213,14 @@ namespace Seiriakos
       {
         return "float" + std::to_string(sizeof(T) * 8);
       }
+      else
+      {
 #   if defined(__clang__) or defined(__GNUC__)
-      else
-      {
         return abi::__cxa_demangle(typeid(T).name(), nullptr, nullptr, nullptr);
-      }
 #   else
-      else
-      {
         return typeid(T).name();
-      }
 #   endif
+      }
     }
 
 #   define SEIRIAKOS_ILOG(text) _backend::_indentlog ilog{text}
@@ -252,6 +273,8 @@ namespace Seiriakos
       _front_of_buffer += sizeof(T) * N;
     }
 
+    // SEIRIAKOS_IGNORE("-Wunused-function",
+    SEIRIAKOS_MAYBE_UNUSED
     static
     void size_t_serialization_implementation(size_t size)
     {
@@ -268,6 +291,7 @@ namespace Seiriakos
         _buffer.push_back(static_cast<uint8_t>((size >> k) & 0xFF));
       }
     }
+    // )
 
     static
     void size_t_deserialization_implementation(size_t& size)
