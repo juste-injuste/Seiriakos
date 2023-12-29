@@ -185,7 +185,7 @@ namespace Seiriakos
         SEIRIAKOS_MAKE_MUTEX(mtx);
         SEIRIAKOS_LOCK(mtx);
 
-        for (unsigned k = _indentation()++; k--;)
+        for (unsigned k = _depth()++; k--;)
         {
           Global::log << "  ";
         }
@@ -193,9 +193,9 @@ namespace Seiriakos
         Global::log << text << std::endl;
       }
 
-      ~_indentlog() noexcept { --_indentation(); }
+      ~_indentlog() noexcept { --_depth(); }
     private:
-      SEIRIAKOS_ATOMIC(unsigned)& _indentation()
+      SEIRIAKOS_ATOMIC(unsigned)& _depth()
       {
         static SEIRIAKOS_ATOMIC(unsigned) indentation = {0};
         return indentation;
