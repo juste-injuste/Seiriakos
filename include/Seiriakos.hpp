@@ -276,7 +276,8 @@ namespace Seiriakos
 
       // compute minimum amount of bytes needed to serialize
       uint8_t bytes_used = 1;
-      for (size_t k = size; k >>= 8; ++bytes_used) {}
+      for (size_t k = size; k >>= 8; ++bytes_used)
+      {}
 
       _buffer.push_back(bytes_used);
 
@@ -444,29 +445,28 @@ namespace Seiriakos
   class Serializable
   {
   public:
-    inline
+    inline // serialize *this according to serialization_sequence
     auto serialize() const noexcept -> std::vector<uint8_t>;
 
-    inline
+    inline // deserialize into *this according to deserialization_sequence
     Info deserialize(const uint8_t data[], const size_t size) noexcept;
   protected:
-    // serialization/deserialization sequence (provided by the inheriting class)
-    virtual
+    virtual // serialization sequence (provided by the inheriting class)
     void serialization_sequence() const noexcept = 0;
-    virtual
+    virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence()     noexcept = 0;
 
-    // recursive calls to appropriate _serialization_implementation overloads
     template<typename T, typename... T_>
-    inline
-    void serialization(const T& data, const T_&... remaining) const noexcept;
-    void serialization()                                      const noexcept {};
+    inline // recursive calls to appropriate _serialization_implementation overloads
+    void serialization(const T& data, const T_&... remaining_data) const noexcept;
+    void serialization()                                           const noexcept
+    {}
 
-    // recursive calls to appropriate _deserialization_implementation overloads
     template<typename T, typename... T_>
-    inline
-    void deserialization(T& data, T_&... remaining) noexcept;
-    void deserialization()                          noexcept {};
+    inline // recursive calls to appropriate _deserialization_implementation overloads
+    void deserialization(T& data, T_&... remaining_data) noexcept;
+    void deserialization()                               noexcept
+    {}
     
   friend void _backend::_serialization_implementation(const Serializable& data);
   friend void _backend::_deserialization_implementation(Serializable& data);
@@ -1087,17 +1087,17 @@ namespace Seiriakos
   }
   
   template<typename T, typename... T_>
-  void Serializable::serialization(const T& data, const T_&... remaining) const noexcept
+  void Serializable::serialization(const T& data, const T_&... remaining_data) const noexcept
   {
     _backend::_serialization_implementation(data);
-    serialization(remaining...);
+    serialization(remaining_data...);
   }
 
   template<typename T, typename... T_>
-  void Serializable::deserialization(T& data, T_&... remaining) noexcept
+  void Serializable::deserialization(T& data, T_&... remaining_data) noexcept
   {
     _backend::_deserialization_implementation(data);
-    deserialization(remaining...);
+    deserialization(remaining_data...);
   }
 //----------------------------------------------------------------------------------------------------------------------
 # undef  SEIRIAKOS_SEQUENCE
