@@ -474,6 +474,7 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
+    SEIRIAKOS_MAYBE_UNUSED
     static
     void _serialization_implementation(const Serializable& data)
     {
@@ -997,7 +998,8 @@ namespace Seiriakos
     struct _tuple_serialization<0, T...>
     {
       static
-      void implementation(const std::tuple<T...>&) {}
+      void implementation(const std::tuple<T...>&)
+      {}
     };
 
     template<size_t N, typename... T>
@@ -1026,7 +1028,8 @@ namespace Seiriakos
     template<typename... T>
     struct _tuple_deserialization<0, T...>
     {
-      static void implementation(std::tuple<T...>&) {}
+      static void implementation(std::tuple<T...>&)
+      {}
     };
 
     template<size_t N, typename... T>
