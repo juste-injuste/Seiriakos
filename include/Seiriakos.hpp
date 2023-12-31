@@ -82,12 +82,12 @@ namespace Seiriakos
     NOT_IMPLEMENTED_YET = 1 << 3
   };
 
-  // serialize "thing"
-  template<typename... T> inline
+  template<typename... T>
+  inline // serialize 'things'
   auto serialize(const T&... things) noexcept -> std::vector<uint8_t>;
 
-  // deserialize data into "thing"
-  template<typename... T> inline
+  template<typename... T>
+  inline // deserialize into 'things'
   Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept;
 
   // abstract class to add serialization capabilities
@@ -144,11 +144,27 @@ namespace Seiriakos
 
 // support from clang 3.9.0 and GCC 5.1 onward
 # if defined(__clang__)
+#   define SEIRIAKOS_NODISCARD    __attribute__((warn_unused_result))
 #   define SEIRIAKOS_MAYBE_UNUSED __attribute__((unused))
 # elif defined(__GNUC__)
+#   define SEIRIAKOS_NODISCARD    __attribute__((warn_unused_result))
 #   define SEIRIAKOS_MAYBE_UNUSED __attribute__((unused))
 # else
+#   define SEIRIAKOS_NODISCARD
 #   define SEIRIAKOS_MAYBE_UNUSED
+# endif
+
+// support from clang 10.0.0 and GCC 10.1 onward
+# if defined(__clang__) and (__clang_major__ >= 10)
+# if __cplusplus < 202002L
+#   define SEIRIAKOS_NODISCARD_REASON(REASON) SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
+# else
+#   define SEIRIAKOS_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+# endif
+# elif defined(__GNUC__) and (__GNUC__ >= 10)
+#   define SEIRIAKOS_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+# else
+#   define SEIRIAKOS_NODISCARD_REASON(REASON) SEIRIAKOS_NODISCARD
 # endif
 
 # if defined(SEIRIAKOS_THREADSAFE)
@@ -243,13 +259,13 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
       {
-        _info = Info::EMPTY_BUFFER;
+        _info = (_info != Info::ALL_GOOD) ? _info : Info::EMPTY_BUFFER;
         return;
       }
 
       if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_UNLIKELY
       {
-        _info = Info::MISSING_BYTES;
+        _info = (_info != Info::ALL_GOOD) ? _info : Info::MISSING_BYTES;
         return;
       }
 
@@ -267,10 +283,8 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("size_t");
 
-      // compute minimum amount of bytes needed to serialize
       uint8_t bytes_used = 1;
-      for (size_t k = size; k >>= 8; ++bytes_used)
-      {}
+      for (size_t k = size; k >>= 8; ++bytes_used) {}
 
       _buffer.push_back(bytes_used);
 
@@ -280,6 +294,7 @@ namespace Seiriakos
       }
     }
 
+    SEIRIAKOS_MAYBE_UNUSED
     static
     void size_t_deserialization_implementation(size_t& size)
     {
@@ -287,7 +302,7 @@ namespace Seiriakos
 
       if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
       {
-        _info = Info::EMPTY_BUFFER;
+        _info = (_info != Info::ALL_GOOD) ? _info : Info::EMPTY_BUFFER;
         return;
       }
 
@@ -295,7 +310,7 @@ namespace Seiriakos
 
       if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_UNLIKELY
       {
-        _info = Info::MISSING_BYTES;
+        _info = (_info != Info::ALL_GOOD) ? _info : Info::MISSING_BYTES;
         return;
       }
 
@@ -454,9 +469,7 @@ namespace Seiriakos
       return sizeof(T) + _sizeof_things<T_...>();
     }
 
-    inline
-    void _serialize_things()
-    {}
+    inline void _serialize_things() {}
 
     template<typename T, typename... T_>
     inline
@@ -466,9 +479,7 @@ namespace Seiriakos
       _serialize_things(remaining_things...);
     }
 
-    inline
-    void _deserialize_things()
-    {}
+    inline void _deserialize_things() {}
 
     template<typename T, typename... T_>
     inline
@@ -482,29 +493,28 @@ namespace Seiriakos
   class Serializable
   {
   public:
+    SEIRIAKOS_NODISCARD_REASON("serialize: ignoring the return value makes no sens")
     inline // serialize *this according to serialization_sequence
     auto serialize() const noexcept -> std::vector<uint8_t>;
 
     inline // deserialize into *this according to deserialization_sequence
-    Info deserialize(const uint8_t data[], const size_t size) noexcept;
+    Info deserialize(const uint8_t data[], size_t size) noexcept;
   protected:
     virtual // serialization sequence (provided by the inheriting class)
     void serialization_sequence() const noexcept = 0;
     
     virtual // deserialization sequence (provided by the inheriting class)
-    void deserialization_sequence()     noexcept = 0;
+    void deserialization_sequence() noexcept = 0;
 
     template<typename T, typename... T_>
-    inline // recursive calls to appropriate _serialization_implementation overloads
+    inline // recursive calls to appropriate serialization overloads
     void serialization(const T& data, const T_&... remaining_data) const noexcept;
-    void serialization()                                           const noexcept
-    {}
+    void serialization() const noexcept {}
 
     template<typename T, typename... T_>
-    inline // recursive calls to appropriate _deserialization_implementation overloads
+    inline // recursive calls to appropriate deserialization overloads
     void deserialization(T& data, T_&... remaining_data) noexcept;
-    void deserialization()                               noexcept
-    {}
+    void deserialization() noexcept {}
     
   friend void _backend::_serialization_implementation(const Serializable& data);
   friend void _backend::_deserialization_implementation(Serializable& data);
@@ -1032,9 +1042,7 @@ namespace Seiriakos
     template<typename... T>
     struct _tuple_serialization<0, T...>
     {
-      static
-      void implementation(const std::tuple<T...>&)
-      {}
+      static void implementation(const std::tuple<T...>&) {}
     };
 
     template<size_t N, typename... T>
@@ -1063,8 +1071,7 @@ namespace Seiriakos
     template<typename... T>
     struct _tuple_deserialization<0, T...>
     {
-      static void implementation(std::tuple<T...>&)
-      {}
+      static void implementation(std::tuple<T...>&) {}
     };
 
     template<size_t N, typename... T>
@@ -1085,6 +1092,7 @@ namespace Seiriakos
   }
 //----------------------------------------------------------------------------------------------------------------------
   template<typename... T>
+  SEIRIAKOS_NODISCARD_REASON("serialize: ignoring the return value makes no sens")
   auto serialize(const T&... things) noexcept -> std::vector<uint8_t>
   {
     SEIRIAKOS_LOG("----serialization summary:");
@@ -1128,7 +1136,7 @@ namespace Seiriakos
     return Seiriakos::serialize(*this);
   }
 
-  Info Serializable::deserialize(const uint8_t data[], const size_t size) noexcept
+  Info Serializable::deserialize(const uint8_t data[], size_t size) noexcept
   {
     return Seiriakos::deserialize(data, size, *this);
   }
