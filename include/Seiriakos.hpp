@@ -83,12 +83,12 @@ namespace Seiriakos
   };
 
   // serialize "thing"
-  template<typename T> inline
-  auto serialize(const T& thing) noexcept -> std::vector<uint8_t>;
+  template<typename... T> inline
+  auto serialize(const T&... things) noexcept -> std::vector<uint8_t>;
 
   // deserialize data into "thing"
-  template<typename T> inline
-  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept;
+  template<typename... T> inline
+  Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept;
 
   // abstract class to add serialization capabilities
   class Serializable;
@@ -440,6 +440,44 @@ namespace Seiriakos
     template<typename... T>
     static
     void _deserialization_implementation(std::tuple<T...>& tuple);
+
+    template<typename T, typename... T_>
+    inline
+    auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) == 0, size_t>::type
+    {
+      return sizeof(T);
+    }
+
+    template<typename T, typename... T_>
+    inline
+    auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) != 0, size_t>::type
+    {
+      return sizeof(T) + _sizeof_things<T_...>();
+    }
+
+    inline
+    void _serialize_things()
+    {}
+
+    template<typename T, typename... T_>
+    inline
+    void _serialize_things(const T& thing, const T_&... remaining_things)
+    {
+      _serialization_implementation(thing);
+      _serialize_things(remaining_things...);
+    }
+
+    inline
+    void _deserialize_things()
+    {}
+
+    template<typename T, typename... T_>
+    inline
+    void _deserialize_things(T& thing, T_&... remaining_things)
+    {
+      _deserialization_implementation(thing);
+      _deserialize_things(remaining_things...);
+    }
   }
 //----------------------------------------------------------------------------------------------------------------------
   class Serializable
@@ -1049,25 +1087,25 @@ namespace Seiriakos
     }
   }
 //----------------------------------------------------------------------------------------------------------------------
-  template<typename T>
-  auto serialize(const T& thing) noexcept -> std::vector<uint8_t>
+  template<typename... T>
+  auto serialize(const T&... things) noexcept -> std::vector<uint8_t>
   {
     SEIRIAKOS_LOG("----serialization summary:");
     _backend::_buffer.clear();
-    _backend::_buffer.reserve(sizeof(thing));
-    _backend::_serialization_implementation(thing);
+    _backend::_buffer.reserve(_backend::_sizeof_things<T...>());
+    _backend::_serialize_things(things...);
     SEIRIAKOS_LOG("----------------------------");
     return _backend::_buffer;
   }
 
-  template<typename T>
-  Info deserialize(T& thing, const uint8_t data[], const size_t size) noexcept
+  template<typename... T>
+  Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept
   {
     SEIRIAKOS_LOG("----deserialization summary:");
     _backend::_buffer.assign(data, data + size);
     _backend::_front_of_buffer = 0;
     _backend::_info = Info::ALL_GOOD;
-    _backend::_deserialization_implementation(thing);
+    _backend::_deserialize_things(things...);
 
     if (_backend::_front_of_buffer != _backend::_buffer.size())
     {
@@ -1086,7 +1124,7 @@ namespace Seiriakos
 
   Info Serializable::deserialize(const uint8_t data[], const size_t size) noexcept
   {
-    return Seiriakos::deserialize(*this, data, size);
+    return Seiriakos::deserialize(data, size, *this);
   }
   
   template<typename T, typename... T_>
