@@ -128,18 +128,18 @@ namespace Seiriakos
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define SEIRIAKOS_HOT  SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
-#   define SEIRIAKOS_COLD SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define SEIRIAKOS_LIKELY   SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define SEIRIAKOS_UNLIKELY SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
-#   define SEIRIAKOS_HOT  [[likely]]
-#   define SEIRIAKOS_COLD [[unlikely]]
+#   define SEIRIAKOS_LIKELY   [[likely]]
+#   define SEIRIAKOS_UNLIKELY [[unlikely]]
 # endif
 # elif defined(__GNUC__) and (__GNUC__ >= 10)
-#   define SEIRIAKOS_HOT  [[likely]]
-#   define SEIRIAKOS_COLD [[unlikely]]
+#   define SEIRIAKOS_LIKELY   [[likely]]
+#   define SEIRIAKOS_UNLIKELY [[unlikely]]
 # else
-#   define SEIRIAKOS_HOT
-#   define SEIRIAKOS_COLD
+#   define SEIRIAKOS_LIKELY
+#   define SEIRIAKOS_UNLIKELY
 # endif
 
 // support from clang 3.9.0 and GCC 5.1 onward
@@ -247,13 +247,13 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG(_underlying_name<T>() + (N > 1 ? " x" + std::to_string(N) : ""));
 
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
       {
         _info = Info::EMPTY_BUFFER;
         return;
       }
 
-      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_COLD
+      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) SEIRIAKOS_UNLIKELY
       {
         _info = Info::MISSING_BYTES;
         return;
@@ -291,7 +291,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("size_t");
 
-      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_COLD
+      if (_front_of_buffer >= _buffer.size()) SEIRIAKOS_UNLIKELY
       {
         _info = Info::EMPTY_BUFFER;
         return;
@@ -299,7 +299,7 @@ namespace Seiriakos
 
       uint8_t bytes_used = _buffer[_front_of_buffer++];
 
-      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_COLD
+      if ((_buffer.size() - _front_of_buffer) < bytes_used) SEIRIAKOS_UNLIKELY
       {
         _info = Info::MISSING_BYTES;
         return;
@@ -490,6 +490,7 @@ namespace Seiriakos
   protected:
     virtual // serialization sequence (provided by the inheriting class)
     void serialization_sequence() const noexcept = 0;
+    
     virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence()     noexcept = 0;
 
@@ -556,7 +557,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(string.size());
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _serialization_implementation(string[0], string.size());
       }
@@ -580,7 +581,7 @@ namespace Seiriakos
 
       string.resize(size);
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _deserialization_implementation(string[0], size);
       }
@@ -599,7 +600,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::array");
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _serialization_implementation(array[0], N);
       }
@@ -618,7 +619,7 @@ namespace Seiriakos
     {
       SEIRIAKOS_ILOG("std::array");
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _deserialization_implementation(array[0], N);
       }
@@ -639,7 +640,7 @@ namespace Seiriakos
 
       size_t_serialization_implementation(vector.size());
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _serialization_implementation(vector[0], vector.size());
       }
@@ -663,7 +664,7 @@ namespace Seiriakos
 
       vector.resize(size);
 
-      if (std::is_fundamental<T>::value) SEIRIAKOS_HOT
+      if (std::is_fundamental<T>::value) SEIRIAKOS_LIKELY
       {
         _deserialization_implementation(vector[0], size);
       }
@@ -1193,8 +1194,8 @@ namespace Seiriakos
 #undef SEIRIAKOS_ATOMIC
 #undef SEIRIAKOS_MAKE_MUTEX
 #undef SEIRIAKOS_LOCK
-#undef SEIRIAKOS_HOT
-#undef SEIRIAKOS_COLD
+#undef SEIRIAKOS_LIKELY
+#undef SEIRIAKOS_UNLIKELY
 #undef SEIRIAKOS_ILOG
 #undef SEIRIAKOS_LOG
 #endif
