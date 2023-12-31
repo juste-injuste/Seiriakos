@@ -5,7 +5,7 @@ justin.asselin@usherbrooke.ca
 https://github.com/juste-injuste/Chronometro
 
 -----licence------------------------------------------------------------------------------------------------------------
- 
+
 MIT License
 
 Copyright (c) 2023 Justin Asselin (juste-injuste)
@@ -27,7 +27,7 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
- 
+
 -----versions-----------------------------------------------------------------------------------------------------------
 
 Version 0.1.0 - Initial release
@@ -35,337 +35,678 @@ Version 0.1.0 - Initial release
 -----description--------------------------------------------------------------------------------------------------------
 
 Chronometro is a simple and lightweight C++11 (and newer) library that allows you to measure the
-execution time of functions or code blocks. See the included README.MD file for more information.
+execution time of code blocks and more. See the included README.MD file for more information.
 
 -----inclusion guard--------------------------------------------------------------------------------------------------*/
 #ifndef CHRONOMETRO_HPP
 #define CHRONOMETRO_HPP
-// --necessary standard libraries---------------------------------------------------------------------------------------
-#include <chrono>   // for std::chrono::high_resolution_clock and std::chrono::nanoseconds
-#include <ostream>  // for std::ostream
-#include <iostream> // for std::cout, std::cerr, std::endl
-#include <cstddef>  // for size_t
-#include <string>   // for std::string
-// --Chronometro library------------------------------------------------------------------------------------------------
+//---necessary libraries------------------------------------------------------------------------------------------------
+#include <chrono>       // for std::chrono::steady_clock, std::chrono::high_resolution_clock, std::chrono::nanoseconds
+#include <ostream>      // for std::ostream
+#include <iostream>     // for std::cout, std::clog, std::endl
+#include <string>       // for std::string
+#include <utility>      // for std::move
+# include <cstdio>      // for std::sprintf
+//---supplementary libraries--------------------------------------------------------------------------------------------
+#if not defined(CHRONOMETRO_CLOCK)
+# include <type_traits> // for std::conditional
+#endif
+
+#if defined(__STDCPP_THREADS__) and not defined(CHRONOMETRO_NOT_THREADSAFE)
+# define CHRONOMETRO_THREADSAFE
+# include <mutex>       // for std::mutex, std::lock_guard
+#endif
+//---Chronometro library------------------------------------------------------------------------------------------------
 namespace Chronometro
 {
-  namespace Version
-  {
-    constexpr long MAJOR = 000;
-    constexpr long MINOR = 001;
-    constexpr long PATCH = 000;
-    constexpr long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
-  }
-  
-  namespace stdc = std::chrono;
+  // clock used to measure time
+#if defined(CHRONOMETRO_CLOCK)
+  using Clock = CHRONOMETRO_CLOCK;
+#else
+  using Clock = std::conditional<
+    std::chrono::high_resolution_clock::is_steady,
+    std::chrono::high_resolution_clock,
+    std::chrono::steady_clock
+  >::type;
+#endif
 
-  // measures the time it takes to execute the following statement/block n times
+  // units in which Time<> can be displayed
+  enum class Unit
+  {
+    ns,       // nanoseconds
+    us,       // microseconds
+    ms,       // milliseconds
+    s,        // seconds
+    min,      // minutes
+    h,        // hours
+    automatic // deduce appropriate unit automatically
+  };
+
+  // measures the time it takes to execute the following statement/block n times, with labels
 # define CHRONOMETRO_MEASURE(...)
 
-  struct Time
-  {
-    stdc::nanoseconds::rep nanoseconds;
-  };
+  // type returned by Stopwatch::split() and Stopwatch::lap()
+  template<Unit U, unsigned D>
+  class Time;
 
   // measure elapsed time
-  class Stopwatch final
-  {
-  public:
-    // display and return lap time
-    inline Time lap() noexcept;
-    // display and return split time
-    inline Time split() noexcept;
-    // pause time measurement
-    inline void pause() noexcept;
-    // reset measured times
-    inline void reset() noexcept;
-    // unpause time measurement
-    inline void unpause() noexcept;
-  private:
-    bool                                    is_paused    = false;
-    stdc::high_resolution_clock::duration   duration     = {};
-    stdc::high_resolution_clock::duration   duration_lap = {};
-    stdc::high_resolution_clock::time_point previous     = stdc::high_resolution_clock::now();
-    stdc::high_resolution_clock::time_point previous_lap = previous;
-  };
+  class Stopwatch;
 
-  class Measure final
-  {
-  public:
-    inline Measure(size_t n = 1, const char* format = nullptr) noexcept;
-    inline size_t operator*() noexcept;
-    inline void operator++() noexcept;
-    inline bool operator!=(const Measure&) noexcept;
-    inline operator bool() noexcept;
-    inline Measure& begin() noexcept;
-    inline Measure end() noexcept;
-  private:
-    const size_t iterations;
-    size_t       iterations_left;
-    Stopwatch    stopwatch;
-    const char*  lap_format;
-  };
+  // measure iterations via range-based for-loop
+  class Measure;
+
+  // execute following statement/blocks only if its last execution was atleast N milliseconds prior
+# define CHRONOMETRO_ONLY_EVERY_MS(N)
+
+  // print time to ostream
+  template<Unit U, unsigned D>
+  inline
+  std::ostream& operator<<(std::ostream& ostream, Time<U, D> time) noexcept;
 
   namespace Global
   {
     static std::ostream out{std::cout.rdbuf()}; // output ostream
-    static std::ostream wrn{std::cerr.rdbuf()}; // warning ostream
+    static std::ostream wrn{std::clog.rdbuf()}; // warning ostream
   }
 
-  inline
-  std::ostream& operator << (std::ostream& ostream, const Time time) noexcept;
-// --Chronometro library: backend forward declaration-------------------------------------------------------------------
-  namespace Backend
+  namespace Version
   {
-    static
-    const char* format_string(const Time time, std::string format, const size_t iteration = 0) noexcept;
+    constexpr long MAJOR  = 000;
+    constexpr long MINOR  = 001;
+    constexpr long PATCH  = 000;
+    constexpr long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
+  }
+//---Chronometro library: backend---------------------------------------------------------------------------------------
+  namespace _backend
+  {
+# if defined(__clang__)
+#   define CHRONOMETRO_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
+#   define CHRONOMETRO_CLANG_IGNORE(WARNING, ...)          \
+      CHRONOMETRO_PRAGMA(clang diagnostic push)            \
+      CHRONOMETRO_PRAGMA(clang diagnostic ignored WARNING) \
+      __VA_ARGS__                                          \
+      CHRONOMETRO_PRAGMA(clang diagnostic pop)
+#endif
 
-# if defined(CHRONOMETRO_NO_WARNINGS)
-#   define CHRONOMETRO_SW_WARNING(message) {} /* warnings are disabled do not #define CHRONOMETRO_NO_WARNINGS to enable them */
+// support from clang 12.0.0 and GCC 10.1 onward
+# if defined(__clang__) and (__clang_major__ >= 12)
+# if __cplusplus < 202002L
+#   define CHRONOMETRO_HOT  CHRONOMETRO_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define CHRONOMETRO_COLD CHRONOMETRO_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
-#   define CHRONOMETRO_SW_WARNING(message) Global::wrn << "warning: Stopwatch::" << __func__ << "(): " << message << std::endl
+#   define CHRONOMETRO_HOT  [[likely]]
+#   define CHRONOMETRO_COLD [[unlikely]]
 # endif
-  }
-// --Chronometro library: frontend definitions--------------------------------------------------------------------------
-# undef  CHRONOMETRO_MEASURE
-# define CHRONOMETRO_MEASURE(...) for (Chronometro::Measure measurement{__VA_ARGS__}; measurement; ++measurement)
+# elif defined(__GNUC__) and (__GNUC__ >= 10)
+#   define CHRONOMETRO_HOT  [[likely]]
+#   define CHRONOMETRO_COLD [[unlikely]]
+# else
+#   define CHRONOMETRO_HOT
+#   define CHRONOMETRO_COLD
+# endif
 
-  Time Stopwatch::lap() noexcept
-  {
-    // measure current time
-    const auto now = stdc::high_resolution_clock::now();
+// support from clang 3.9.0 and GCC 5.1 onward
+# if defined(__clang__)
+#   define CHRONOMETRO_NODISCARD __attribute__((warn_unused_result))
+# elif defined(__GNUC__)
+#   define CHRONOMETRO_NODISCARD __attribute__((warn_unused_result))
+# else
+#   define CHRONOMETRO_NODISCARD
+# endif
 
-    stdc::nanoseconds::rep ns = duration_lap.count();
+// support from clang 10.0.0 and GCC 10.1 onward
+# if defined(__clang__) and (__clang_major__ >= 10)
+# if __cplusplus < 202002L
+#   define CHRONOMETRO_NODISCARD_REASON(REASON) CHRONOMETRO_CLANG_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
+# else
+#   define CHRONOMETRO_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+# endif
+# elif defined(__GNUC__) and (__GNUC__ >= 10)
+#   define CHRONOMETRO_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+# else
+#   define CHRONOMETRO_NODISCARD_REASON(REASON) CHRONOMETRO_NODISCARD
+# endif
 
-    if (is_paused == false)
-    {
-      // save elapsed times
-      duration += now - previous;
-      ns       += (now - previous_lap).count();
-      
-      // reset measured time
-      duration_lap = stdc::high_resolution_clock::duration{};
-      previous     = stdc::high_resolution_clock::now();
-      previous_lap = previous;
-    }
-    else CHRONOMETRO_SW_WARNING("cannot measure lap, must not be paused");
+#if defined(CHRONOMETRO_THREADSAFE)
+# define CHRONOMETRO_THREADLOCAL     thread_local
+# define CHRONOMETRO_MAKE_MUTEX(...) static std::mutex __VA_ARGS__
+# define CHRONOMETRO_LOCK(MUTEX)     std::lock_guard<decltype(MUTEX)> _lock(MUTEX)
+#else
+# define CHRONOMETRO_THREADLOCAL
+# define CHRONOMETRO_MAKE_MUTEX(...)
+# define CHRONOMETRO_LOCK(MUTEX)      void(0)
+#endif
 
-    return Time{ns};
-  }
+    CHRONOMETRO_MAKE_MUTEX(_out_mtx);
 
-  Time Stopwatch::split() noexcept
-  {
-    // measure current time
-    const auto now = stdc::high_resolution_clock::now();
+    template<Unit>
+    struct _unit_helper;
 
-    stdc::nanoseconds::rep ns = duration.count();
-
-    if (is_paused == false)
-    {
-      // save elapsed times
-      duration     += now - previous;
-      duration_lap += now - previous_lap;
-      
-      ns = duration.count();
-
-      // save time point
-      previous     = stdc::high_resolution_clock::now();
-      previous_lap = previous;
-    }
-    else CHRONOMETRO_SW_WARNING("cannot measure split, must not be paused");
+#   define CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(UNIT, LABEL, FACTOR) \
+      template<>                                                            \
+      struct _unit_helper<UNIT>                                             \
+      {                                                                     \
+        static constexpr const char* label  = LABEL;                        \
+        static constexpr double      factor = FACTOR;                       \
+      }
     
-    return Time{ns};
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ns,  "ns",  1);
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::us,  "us",  1000);
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ms,  "ms",  1000000);
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::s,   "s",   1000000000);
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::min, "min", 60000000000);
+    CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::h,   "h",   3600000000000);
+
+#   undef CHRONOMETRO_MAKE_UNIT_HELPER_SPECIALIZATION
+
+    template<Unit U, unsigned D>
+    inline
+    const char* _time_as_cstring(Time<U, D> time)
+    {
+      static_assert(D <= 3, "_backend::_time_as_string: too many decimals requested");
+      static const char* format[] = {"%.0f %s", "%.1f %s", "%.2f %s", "%.3f %s"};
+
+      static CHRONOMETRO_THREADLOCAL char buffer[32];
+
+      double ajusted_time = static_cast<double>(time.nanoseconds.count())/_unit_helper<U>::factor;
+      std::sprintf(buffer, format[D], ajusted_time, _unit_helper<U>::label);
+
+      return buffer;
+    }
+
+    template<unsigned D>
+    inline
+    const char* _time_as_cstring(Time<Unit::automatic, D> time)
+    {
+      // 10 h < duration
+      if (time.nanoseconds.count() > 36000000000000) CHRONOMETRO_COLD
+      {
+        return _time_as_cstring(Time<Unit::h, D>{time.nanoseconds});
+      }
+
+      // 10 min < duration <= 10 h
+      if (time.nanoseconds.count() > 600000000000) CHRONOMETRO_COLD
+      {
+        return _time_as_cstring(Time<Unit::min, D>{time.nanoseconds});
+      }
+
+      // 10 s < duration <= 10 m
+      if (time.nanoseconds.count() > 10000000000)
+      {
+        return _time_as_cstring(Time<Unit::s, D>{time.nanoseconds});
+      }
+
+      // 10 ms < duration <= 10 s
+      if (time.nanoseconds.count() > 10000000)
+      {
+        return _time_as_cstring(Time<Unit::ms, D>{time.nanoseconds});
+      }
+
+      // 10 us < duration <= 10 ms
+      if (time.nanoseconds.count() > 10000)
+      {
+        return _time_as_cstring(Time<Unit::us, D>{time.nanoseconds});
+      }
+
+      // duration <= 10 us
+      return _time_as_cstring(Time<Unit::ns, D>{time.nanoseconds});
+    }
+
+    template<Unit U, unsigned D>
+    inline
+    std::string _format_time(Time<U, D> time, std::string&& format) noexcept
+    {
+      static const std::string unit_specifiers[] = {"%ns", "%us", "%ms", "%s", "%min", "%h"};
+
+      for (unsigned k = 0; k < 6; ++k)
+      {
+        const auto& unit_specifier = unit_specifiers[k];
+        auto  position             = format.rfind(unit_specifier);
+        while (position != std::string::npos)
+        {
+          format.replace(position, unit_specifier.length(), _time_as_cstring(time));
+          position = format.find(unit_specifier);
+        }
+      }
+
+      return std::move(format);
+    }
+
+    template<Unit U, unsigned D>
+    inline
+    std::string _format_lap(Time<U, D> time, std::string&& format, unsigned iteration) noexcept
+    {
+      auto position = format.find("%#");
+      while (position != std::string::npos)
+      {
+        format.replace(position, 2, std::to_string(iteration));
+        position = format.rfind("%#");
+      }
+
+      return _format_time(time, std::move(format));
+    }
+
+    template<Unit U, unsigned D>
+    inline
+    std::string _format_tot(Time<U, D> time, std::string&& format, unsigned iterations) noexcept
+    {
+      format = _format_time(time, std::move(format));
+
+      auto position = format.rfind("%D");
+      while (position != std::string::npos)
+      {
+        format.erase(position + 1, 1);
+        position = format.find("%D");
+      }
+
+      if (iterations == 0) CHRONOMETRO_COLD
+      {
+        iterations = 1;
+      }
+
+      return _format_time(Time<U, 3>{time.nanoseconds/iterations}, std::move(format));
+    }
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  template<Unit U, unsigned D>
+  class Time
+  {
+  public:
+    std::chrono::nanoseconds nanoseconds;
+
+    template<Unit U_, unsigned D_ = D>
+    inline // change format
+    auto format() noexcept -> Time<U_, D_>;
+
+    template<unsigned D_, Unit U_ = U>
+    inline // change format
+    auto format() noexcept -> Time<U_, D_>;
+  };
+
+  class Stopwatch
+  {
+  private: class Guard;
+  public:
+    CHRONOMETRO_NODISCARD_REASON("lap: not using the return value makes no sens")
+    inline // display and return lap time
+    auto lap() noexcept -> Time<Unit::automatic, 0>;
+
+    CHRONOMETRO_NODISCARD_REASON("split: not using the return value makes no sens")
+    inline // display and return split time
+    auto split() noexcept -> Time<Unit::automatic, 0>;
+
+    inline // reset measured times
+    void reset() noexcept;
+
+    inline // pause time measurement
+    void pause() noexcept;
+
+    inline // unpause time measurement
+    void unpause() noexcept;
+
+    inline // scoped pause/unpause (RAII)
+    auto guard() noexcept -> Guard;
+
+  public: // extra overloads to make formatting easier
+    template<Unit U, unsigned D = 0>
+    CHRONOMETRO_NODISCARD_REASON("lap: not using the return value makes no sens")
+    inline // display and return lap time with custom format
+    auto lap() noexcept -> Time<U, D>;
+
+    template<unsigned D, Unit U = Unit::automatic>
+    CHRONOMETRO_NODISCARD_REASON("lap: not using the return value makes no sens")
+    inline // display and return lap time with custom format
+    auto lap() noexcept -> Time<U, D>;
+
+    template<Unit U, unsigned D = 0>
+    CHRONOMETRO_NODISCARD_REASON("split: not using the return value makes no sens")
+    inline // display and return split time with custom format
+    auto split() noexcept -> Time<U, D>;
+
+    template<unsigned D, Unit U = Unit::automatic>
+    CHRONOMETRO_NODISCARD_REASON("split: not using the return value makes no sens")
+    inline // display and return split time
+    auto split() noexcept -> Time<U, D>;
+  private:
+    bool                     _is_paused    = false;
+    std::chrono::nanoseconds _duration_tot = {};
+    std::chrono::nanoseconds _duration_lap = {};
+    Clock::time_point        _previous     = Clock::now();
+  };
+
+  class Measure
+  {
+  public:
+    // measure one iteration
+    Measure() noexcept = default;
+
+    inline // measure iterations
+    Measure(unsigned iterations) noexcept;
+
+    inline // measure iterations with iteration message
+    Measure(unsigned iterations, const char* iteration_format) noexcept;
+
+    inline // measure iterations with iteration message and custom total message
+    Measure(unsigned iterations, const char* iteration_format, const char* total_format) noexcept;
+
+    inline // pause measurement
+    void pause() noexcept;
+
+    inline // unpause measurement
+    void unpause() noexcept;
+
+    inline // scoped pause/unpause of measurement
+    auto guard() noexcept -> decltype(Stopwatch().guard());
+  private:
+    class View;
+    const unsigned _iterations  = 1;
+    unsigned       _iters_left  = _iterations;
+    const char*    _iter_format = nullptr;
+    const char*    _tot_format  = "total elapsed time: %ms";
+    Stopwatch      _stopwatch;
+  public: // iterator stuff
+    inline auto begin()                    noexcept -> Measure&;
+    inline auto end()                const noexcept -> Measure;
+    inline View operator*()                noexcept;
+    inline void operator++()               noexcept;
+    inline bool operator!=(const Measure&) noexcept;
+    inline      operator bool()            noexcept;
+  };
+
+  class Measure::View final
+  {
+  public:
+    // current measurement iteration
+    const unsigned iteration;
+
+    inline // pause measurement
+    void pause() noexcept;
+
+    inline // unpause measurement
+    void unpause() noexcept;
+
+    inline // scoped pause/unpause of measurement
+    auto guard() noexcept -> decltype(Stopwatch().guard());
+  private:
+    inline View(unsigned current_iteration, Measure* measurement) noexcept;
+    Measure* const _measurement;
+  friend class Measure;
+  };
+
+# undef  CHRONOMETRO_MEASURE
+# define CHRONOMETRO_MEASURE(...)                                                      \
+    for (Chronometro::Measure _measurement{__VA_ARGS__}; _measurement; ++_measurement)
+
+# undef  CHRONOMETRO_ONLY_EVERY_MS
+# define CHRONOMETRO_ONLY_EVERY_MS(N)                                                            \
+    if ([]{                                                                                      \
+      static_assert((N) > 0, "CHRONOMETRO_ONLY_EVERY_MS: N must be a non-zero positive number"); \
+      static Chronometro::Clock::time_point _previous = {};                                      \
+      auto _target = std::chrono::nanoseconds{(N)*1000000};                                      \
+      if ((Chronometro::Clock::now() - _previous) > _target)                                     \
+      {                                                                                          \
+        _previous = Chronometro::Clock::now();                                                   \
+        return true;                                                                             \
+      }                                                                                          \
+      return false;                                                                              \
+    }())
+//----------------------------------------------------------------------------------------------------------------------
+  class Stopwatch::Guard final
+  {
+  private:
+    Stopwatch* const _stopwatch;
+
+    Guard(Stopwatch* stopwatch) noexcept :
+      _stopwatch(stopwatch)
+    {
+      _stopwatch->pause();
+    }
+  public:
+    ~Guard() noexcept
+    {
+      _stopwatch->unpause();
+    }
+  friend class Stopwatch;
+  };
+//----------------------------------------------------------------------------------------------------------------------
+  template<Unit U, unsigned D> template<Unit U_, unsigned D_>
+  auto Time<U, D>::format() noexcept -> Time<U_, D_>
+  {
+    return reinterpret_cast<Time<U_, D_>&>(*this);
   }
 
-  void Stopwatch::pause() noexcept
+  template<Unit U, unsigned D> template<unsigned D_, Unit U_>
+  auto Time<U, D>::format() noexcept -> Time<U_, D_>
   {
-    // measure current time
-    const auto now = stdc::high_resolution_clock::now();
+    return reinterpret_cast<Time<U_, D_>&>(*this);
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  auto Stopwatch::lap() noexcept -> Time<Unit::automatic, 0>
+  {
+    return lap<Unit::automatic, 0>();
+  }
+  
+  template<Unit U, unsigned D>
+  auto Stopwatch::lap() noexcept -> Time<U, D>
+  {
+    auto now = Clock::now();
 
-    // add elapsed time up to now if not paused
-    if (is_paused == false)
+    std::chrono::nanoseconds lap_duration = _duration_lap;
+    _duration_lap = {};
+
+    if (not _is_paused) CHRONOMETRO_HOT
     {
-      is_paused = true;
+      _duration_tot += now - _previous;
+      lap_duration  += now - _previous;
 
-      // save elapsed times
-      duration     += now - previous;
-      duration_lap += now - previous_lap;
+      _previous = Clock::now(); // start measurement from here
     }
-    else CHRONOMETRO_SW_WARNING("cannot pause further, is already paused");
+
+    return Time<U, D>{lap_duration};
+  }
+
+  template<unsigned D, Unit U>
+  auto Stopwatch::lap() noexcept -> Time<U, D>
+  {
+    return lap<U, D>();
+  }
+
+  auto Stopwatch::split() noexcept -> Time<Unit::automatic, 0>
+  {
+    return split<Unit::automatic, 0>();
+  }
+
+  template<Unit U, unsigned D>
+  auto Stopwatch::split() noexcept -> Time<U, D>
+  {
+    auto now = Clock::now();
+
+    std::chrono::nanoseconds tot_duration = _duration_tot;
+
+    if (not _is_paused) CHRONOMETRO_HOT
+    {
+      tot_duration += now - _previous;
+
+      _duration_lap = {};
+      _duration_tot = {};
+    }
+
+    return Time<U, D>{tot_duration};
+  }
+
+  template<unsigned D, Unit U>
+  auto Stopwatch::split() noexcept -> Time<U, D>
+  {
+    return split<U, D>();
   }
 
   void Stopwatch::reset() noexcept
   {
-    // reset measured time
-    duration     = stdc::high_resolution_clock::duration{};
-    duration_lap = stdc::high_resolution_clock::duration{};
+    _duration_tot = {};
+    _duration_lap = {};
 
     // hot reset if unpaused
-    if (is_paused == false)
+    if (not _is_paused)
     {
-      previous     = stdc::high_resolution_clock::now();
-      previous_lap = previous;
-    } 
+      _previous = Clock::now(); // start measurement from here
+    }
+  }
+
+  void Stopwatch::pause() noexcept
+  {
+    auto now = Clock::now();
+
+    if (not _is_paused) CHRONOMETRO_HOT
+    {
+      _is_paused = true;
+
+      _duration_tot += now - _previous;
+      _duration_lap += now - _previous;
+    }
   }
 
   void Stopwatch::unpause() noexcept
   {
-    if (is_paused == true)
+    if (_is_paused) CHRONOMETRO_HOT
     {
-      // unpause
-      is_paused = false;
+      _is_paused = false;
 
-      // reset measured time
-      previous     = stdc::high_resolution_clock::now();
-      previous_lap = previous;
+      _previous  = Clock::now(); // start measurement from here
     }
-    else CHRONOMETRO_SW_WARNING("is already unpaused");
   }
-  
-  Measure::Measure(size_t n, const char* format) noexcept :
-    iterations(n),
-    iterations_left(n),
-    lap_format{format}
+
+  auto Stopwatch::guard() noexcept -> Stopwatch::Guard
+  {
+    return Guard(this);
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  Measure::Measure(unsigned iterations) noexcept :
+    _iterations(iterations),
+    _tot_format((iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
   {}
-  
-  size_t Measure::operator*() noexcept
+
+  Measure::Measure(unsigned iterations, const char* iteration_format) noexcept :
+    _iterations(iterations),
+    _iter_format((iteration_format[0] == '\0') ? nullptr : iteration_format),
+    _tot_format((iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
+  {}
+
+  Measure::Measure(unsigned iterations, const char* iteration_format, const char* total_format) noexcept :
+    _iterations(iterations),
+    _iter_format((iteration_format[0] == '\0') ? nullptr : iteration_format),
+    _tot_format((total_format[0] == '\0') ? nullptr : total_format)
+  {}
+
+  void Measure::pause() noexcept
   {
-    return iterations - iterations_left;
+    _stopwatch.pause();
   }
 
-  void Measure::operator++() noexcept
+  void Measure::unpause() noexcept
   {
-    Time lap_time = stopwatch.lap();
-    
-    stopwatch.pause();
-
-    if (lap_format)
-    {
-      Global::out << Backend::format_string(lap_time, lap_format, iterations - iterations_left) << std::endl;
-    }
-
-    --iterations_left;
-
-    stopwatch.unpause();
-  }
-
-  bool Measure::operator!=(const Measure&) noexcept
-  {
-    return bool(*this);
-  }
-
-  Measure::operator bool() noexcept
-  {     
-    if (iterations_left)
-    {
-      return true;
-    }
-    
-    Global::out << Backend::format_string(stopwatch.split(), "elapsed time: %ms") << std::endl;
-    return false;
+    _stopwatch.unpause();
   }
 
   Measure& Measure::begin() noexcept
   {
+    _iters_left = _iterations;
+
+    _stopwatch.unpause();
+    _stopwatch.reset();
+
     return *this;
   }
 
-  Measure Measure::end() noexcept
+  Measure Measure::end() const noexcept
   {
-    return Measure{0};
+    return Measure(0);
   }
 
-  std::ostream& operator << (std::ostream& ostream, const Time time) noexcept
+  Measure::View Measure::operator*() noexcept
   {
-    // 10 h < duration
-    if (time.nanoseconds > 36000000000000)
-    {
-      return ostream << Backend::format_string(time, "elapsed time: %h") << std::endl;
-    }
-
-    // 10 min < duration <= 10 h
-    if (time.nanoseconds > 600000000000)
-    {
-      return ostream << Backend::format_string(time, "elapsed time: %min") << std::endl;
-    }
-
-    // 10 s < duration <= 10 m
-    if (time.nanoseconds > 10000000000)
-    {
-      return ostream << Backend::format_string(time, "elapsed time: %s") << std::endl;
-    }
-
-    // 10 ms < duration <= 10 s
-    if (time.nanoseconds > 10000000)
-    {
-      return ostream << Backend::format_string(time, "elapsed time: %ms") << std::endl;
-    }
-
-    // 10 us < duration <= 10 ms
-    if (time.nanoseconds > 10000)
-    {
-      return ostream << Backend::format_string(time, "elapsed time: %us") << std::endl;
-    }
-
-    // duration <= 10 us
-    return ostream << Backend::format_string(time, "elapsed time: %ns") << std::endl;
+    return View(_iterations - _iters_left, this);
   }
-// --Chronometro library: backend definitions---------------------------------------------------------------------------
-  namespace Backend
+
+  void Measure::operator++() noexcept
   {
-    static
-    const char* format_string(const Time time, std::string format, const size_t iteration) noexcept
+    _stopwatch.pause();
+    auto iter_duration = _stopwatch.lap();
+
+    if (_iter_format)
     {
-      size_t iteration_position = format.find("%#");
-      if (iteration_position != std::string::npos)
-      {
-        format.replace(iteration_position, 2, std::to_string(iteration));
-      }
-
-      size_t time_position = format.rfind("%ms");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds/1000000) + ' ');
-        return format.c_str();
-      }
-
-      time_position = format.rfind("%us");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds/1000) + ' ');
-        return format.c_str();
-      }
-
-      time_position = format.rfind("%ns");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds) + ' ');
-        return format.c_str();
-      }
-
-      time_position = format.rfind("%s");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds/1000000000) + ' ');
-        return format.c_str();
-      }
-
-      time_position = format.rfind("%min");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds/60000000) + ' ');
-        return format.c_str();
-      }
-
-      time_position = format.rfind("%h");
-      if (time_position != std::string::npos)
-      {
-        format.replace(time_position, 1, std::to_string(time.nanoseconds/3600000000) + ' ');
-        return format.c_str();
-      }
-      
-      return format.c_str();
+      CHRONOMETRO_LOCK(_backend::_out_mtx);
+      Global::out << _backend::_format_lap(iter_duration, _iter_format, _iterations - _iters_left) << std::endl;
     }
+
+    --_iters_left;
+    _stopwatch.unpause();
+  }
+
+  bool Measure::operator!=(const Measure&) noexcept
+  {
+    return operator bool();
+  }
+
+  Measure::operator bool() noexcept
+  {
+    _stopwatch.pause();
+    if (_iters_left) CHRONOMETRO_HOT
+    {
+      _stopwatch.unpause();
+      return true;
+    }
+
+    auto duration = _stopwatch.split();
+
+    if (_tot_format) CHRONOMETRO_HOT
+    {
+      CHRONOMETRO_LOCK(_backend::_out_mtx);
+      Global::out << _backend::_format_tot(duration, _tot_format, _iterations) << std::endl;
+    }
+
+    return false;
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  Measure::View::View(unsigned current_iteration, Measure* measurement) noexcept :
+    iteration(current_iteration),
+    _measurement(measurement)
+  {}
+
+  void Measure::View::pause() noexcept
+  {
+    _measurement->pause();
+  }
+
+  void Measure::View::unpause() noexcept
+  {
+    _measurement->unpause();
+  }
+
+  auto Measure::guard() noexcept -> decltype(Stopwatch().guard())
+  {
+    return _stopwatch.guard();
+  }
+
+  auto Measure::View::guard() noexcept -> decltype(Stopwatch().guard())
+  {
+    return _measurement->guard();
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  template<Unit U, unsigned D>
+  std::ostream& operator<<(std::ostream& ostream, Time<U, D> time) noexcept
+  {
+    return ostream << "elapsed time: " << _backend::_time_as_cstring(time) << std::endl;
   }
 }
+//----------------------------------------------------------------------------------------------------------------------
+# undef CHRONOMETRO_PRAGMA
+# undef CHRONOMETRO_CLANG_IGNORE
+# undef CHRONOMETRO_HOT
+# undef CHRONOMETRO_COLD
+# undef CHRONOMETRO_NODISCARD
+# undef CHRONOMETRO_NODISCARD_REASON
+# undef CHRONOMETRO_THREADSAFE
+# undef CHRONOMETRO_THREADLOCAL
+# undef CHRONOMETRO_MAKE_MUTEX
+# undef CHRONOMETRO_LOCK
 #endif
