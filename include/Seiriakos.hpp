@@ -116,29 +116,21 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
-#   define SEIRIAKOS_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
 
 # if defined(__clang__)
-#   define SEIRIAKOS_IGNORE(WARNING, ...)                \
+#   define SEIRIAKOS_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
+#   define SEIRIAKOS_CLANG_IGNORE(WARNING, ...)          \
       SEIRIAKOS_PRAGMA(clang diagnostic push)            \
       SEIRIAKOS_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
       SEIRIAKOS_PRAGMA(clang diagnostic pop)
-# elif defined(__GNUC__)
-#   define SEIRIAKOS_IGNORE(WARNING, ...)              \
-      SEIRIAKOS_PRAGMA(GCC diagnostic push)            \
-      SEIRIAKOS_PRAGMA(GCC diagnostic ignored WARNING) \
-      __VA_ARGS__                                      \
-      SEIRIAKOS_PRAGMA(GCC diagnostic pop)
-# else
-#   define SEIRIAKOS_IGNORE(WARNING, ...)
 #endif
 
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define SEIRIAKOS_HOT  SEIRIAKOS_IGNORE("-Wc++20-extensions", [[likely]])
-#   define SEIRIAKOS_COLD SEIRIAKOS_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define SEIRIAKOS_HOT  SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define SEIRIAKOS_COLD SEIRIAKOS_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
 #   define SEIRIAKOS_HOT  [[likely]]
 #   define SEIRIAKOS_COLD [[unlikely]]
