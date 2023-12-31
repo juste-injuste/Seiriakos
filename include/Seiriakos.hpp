@@ -794,7 +794,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        unordered_map.insert(key_value);
+        unordered_map.insert(std::move(key_value));
       }
     }
 
@@ -828,7 +828,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        unordered_multimap.insert(key_value);
+        unordered_multimap.insert(std::move(key_value));
       }
     }
 
@@ -861,7 +861,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        map.insert(key_value);
+        map.insert(std::move(key_value));
       }
     }
 
@@ -894,7 +894,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        multimap.insert(key_value);
+        multimap.insert(std::move(key_value));
       }
     }
 
@@ -928,7 +928,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        unordered_set.insert(key);
+        unordered_set.insert(std::move(key));
       }
     }
 
@@ -962,7 +962,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        unordered_multiset.insert(key);
+        unordered_multiset.insert(std::move(key));
       }
     }
 
@@ -995,7 +995,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        set.insert(key);
+        set.insert(std::move(key));
       }
     }
 
@@ -1028,7 +1028,7 @@ namespace Seiriakos
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        multiset.insert(key);
+        multiset.insert(std::move(key));
       }
     }
 

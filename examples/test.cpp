@@ -43,7 +43,7 @@ int main()
   something.g = {0, 1, 2, 3, 4, 5, 6, 7};
 
 loop:
-  CHRONOMETRO_MEASURE(100000)
+  CHRONOMETRO_MEASURE(1)
   serialized = something.serialize();
 
   std::cout << "a:   " << something.a.data() << '\n';
@@ -68,7 +68,7 @@ loop:
 
   // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
-  CHRONOMETRO_MEASURE(100000)
+  CHRONOMETRO_MEASURE(1)
   decoded.deserialize(serialized.data(), serialized.size());
 
   std::cout << "a:   " << decoded.a.data() << '\n';
