@@ -225,12 +225,6 @@ namespace Seiriakos
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
    
-    static
-    void _serialization_implementation(const Serializable& data);
-
-    static
-    void _deserialization_implementation(Serializable& data);
-
     template<typename T, typename = _if_not_Serializable<T>>
     static
     void _serialization_implementation(const T& data, size_t N = 1)
@@ -311,6 +305,12 @@ namespace Seiriakos
         size |= (_buffer[_front_of_buffer++] << k);
       }
     }
+
+    inline
+    void _serialization_implementation(const Serializable& data);
+
+    inline
+    void _deserialization_implementation(Serializable& data);
 
     template<typename T>
     static
@@ -512,8 +512,6 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
-    SEIRIAKOS_MAYBE_UNUSED
-    static
     void _serialization_implementation(const Serializable& data)
     {
       SEIRIAKOS_ILOG("Serializable");
@@ -521,7 +519,6 @@ namespace Seiriakos
       data.serialization_sequence(); // serialize data via its specialized implementation
     }
 
-    static
     void _deserialization_implementation(Serializable& data)
     {
       SEIRIAKOS_ILOG("Serializable");
@@ -1091,10 +1088,14 @@ namespace Seiriakos
   auto serialize(const T&... things) noexcept -> std::vector<uint8_t>
   {
     SEIRIAKOS_LOG("----serialization summary:");
+
     _backend::_buffer.clear();
     _backend::_buffer.reserve(_backend::_sizeof_things<T...>());
+
     _backend::_serialize_things(things...);
+
     SEIRIAKOS_LOG("----------------------------");
+
     return _backend::_buffer;
   }
 
@@ -1102,9 +1103,11 @@ namespace Seiriakos
   Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept
   {
     SEIRIAKOS_LOG("----deserialization summary:");
+
     _backend::_buffer.assign(data, data + size);
     _backend::_front_of_buffer = 0;
-    _backend::_info = Info::ALL_GOOD;
+    _backend::_info            = Info::ALL_GOOD;
+
     _backend::_deserialize_things(things...);
 
     if (_backend::_info == Info::ALL_GOOD) SEIRIAKOS_LIKELY
