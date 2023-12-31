@@ -76,10 +76,10 @@ namespace Seiriakos
   enum class Info : uint8_t
   {
     ALL_GOOD            = 0,
-    MISSING_BYTES       = 1,
-    EMPTY_BUFFER        = 2,
-    SEQUENCE_MISMATCH   = 3,
-    NOT_IMPLEMENTED_YET = 4
+    MISSING_BYTES       = 1 << 0,
+    EMPTY_BUFFER        = 1 << 1,
+    SEQUENCE_MISMATCH   = 1 << 2,
+    NOT_IMPLEMENTED_YET = 1 << 3
   };
 
   // serialize "thing"
@@ -116,7 +116,6 @@ namespace Seiriakos
 //----------------------------------------------------------------------------------------------------------------------
   namespace _backend
   {
-
 # if defined(__clang__)
 #   define SEIRIAKOS_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
 #   define SEIRIAKOS_CLANG_IGNORE(WARNING, ...)          \
@@ -165,8 +164,8 @@ namespace Seiriakos
 # endif
 
     static SEIRIAKOS_THREADLOCAL std::vector<uint8_t> _buffer;
-    static SEIRIAKOS_THREADLOCAL size_t _front_of_buffer;
-    static SEIRIAKOS_THREADLOCAL Info _info;
+    static SEIRIAKOS_THREADLOCAL size_t               _front_of_buffer;
+    static SEIRIAKOS_THREADLOCAL Info                 _info;
 
 # if defined(SEIRIAKOS_LOGGING)
     class _indentlog
