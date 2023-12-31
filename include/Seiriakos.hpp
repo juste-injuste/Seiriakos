@@ -1107,9 +1107,12 @@ namespace Seiriakos
     _backend::_info = Info::ALL_GOOD;
     _backend::_deserialize_things(things...);
 
-    if (_backend::_front_of_buffer != _backend::_buffer.size())
+    if (_backend::_info == Info::ALL_GOOD) SEIRIAKOS_LIKELY
     {
-      _backend::_info = Info::SEQUENCE_MISMATCH;
+      if (_backend::_front_of_buffer != _backend::_buffer.size()) SEIRIAKOS_UNLIKELY
+      {
+        _backend::_info = Info::SEQUENCE_MISMATCH;
+      }
     }
 
     SEIRIAKOS_LOG("----------------------------");
