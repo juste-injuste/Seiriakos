@@ -4,7 +4,6 @@
 #include <cstdint>
 #include <string>
 #include <array>
-#include <cerrno>
 
 // serializable data structure
 struct SDS final : public Seiriakos::Serializable
