@@ -1,6 +1,7 @@
 // #define SRZ_DEBUGGING
 #define SRZ_UNSAFE
 #define SRZ_NOT_THREADSAFE
+#define SRZ_FIXED_LENGHT
 #include "Seiriakos.hpp"
 #include "../include/Chronometro.hpp"
 #include <iostream>
@@ -44,8 +45,10 @@ int main()
 
 loop:
   CHZ_MEASURE(10, "iteration %# took %ms")
-  CHZ_LOOP_FOR(10000)
+  CHZ_LOOP_FOR(100000)
   serialized = something.serialize();
+
+  std::cout << serialized.size();
 
   // std::cout << "a:   " << something.a.data() << '\n';
   // std::cout << "b:   " << something.b << '\n';
@@ -70,7 +73,7 @@ loop:
   // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
   CHZ_MEASURE(10, "iteration %# took %ms")
-  CHZ_LOOP_FOR(10000)
+  CHZ_LOOP_FOR(100000)
   decoded.deserialize(serialized.data(), serialized.size());
 
   // std::cout << "a:   " << decoded.a.data() << '\n';

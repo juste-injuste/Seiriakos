@@ -29,7 +29,28 @@ OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
 -----versions---------------------------------------------------------------------------------------
+TODO:
+  std::vector<bool>
+  std::type_index
+  std::valarray
+  std::bitset
+  std::queue
+  std::priority_queue
+  std::forward_list
+  std::stack
+  std::ratio
+  std::chrono::duration
+  std::regex
+  std::atomic
 
+  std::system_error
+  std::hash ?? idk, im not sure about how it works
+  std::basic_stringbuf ??
+  std::basic_istringstream ??
+  std::basic_ostringstream ??
+  std::basic_stringstream ??
+  std::locale ??
+  std::ios ??
 -----description------------------------------------------------------------------------------------
 
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
@@ -43,7 +64,7 @@ deserialize objects.
 #include <cstdint>     // for uint8_t
 #include <vector>      // for std::vector
 #include <type_traits> // for std::enable_if, std::is_*
-#include <iostream>    // for std::cout, std::cerr
+#include <iostream>    // for std::clog
 #include <cstring>     // for std::memcpy
 //---conditionally necessary standard libraries-----------------------------------------------------
 #if defined(__STDCPP_THREADS__) and not defined(SRZ_NOT_THREADSAFE)
@@ -59,18 +80,38 @@ deserialize objects.
 # include <cstdlib>  // for std::free
 #endif
 //-------------------
-#include <array>
-#include <complex>
-#include <vector>
-#include <list>
-#include <deque>
-#include <string>
-#include <utility>
-#include <unordered_map>
-#include <map>
-#include <unordered_set>
-#include <set>
-#include <tuple>
+
+#include <array>          // for std::array
+#include <complex>        // for std::complex
+#include <list>           // for std::list
+#include <deque>          // for std::deque
+#include <string>         // for std::basic_string
+#include <utility>        // for std::pair
+#include <unordered_map>  // for std::unordered_map, std::unordered_multimap
+#include <map>            // for std::map, std::multimap
+#include <unordered_set>  // for std::unordered_set, std::unordered_multiset
+#include <set>            // for std::set, std::multiset
+#include <tuple>          // for std::tuple
+//
+
+// things that make no sens i think
+// #include <streambuf>         // what's a basic_streambuf
+// #include <ostream>           // what's a basic_ostream
+// #include <functional>        // except maybe for the things like std::plus ??
+// #include <initializer_list>
+// #include <iterator>
+// #include <fstream>
+// #include <exception>
+// #include <istream>
+// #include <new>
+// #include <stdexcept>
+// #include <memory> // std::unique_ptr, std::shared_ptr, std::weak_ptr
+// #include <new>
+// #include <thread // thread/jthread
+// #include <future>
+// #include <scoped_allocator>
+// #include <mutex>
+// #include <condition_variable>
 //---Seiriakos library------------------------------------------------------------------------------
 namespace srz
 {
@@ -104,8 +145,6 @@ namespace srz
 
   namespace _io
   {
-    static std::ostream out(std::cout.rdbuf()); // output
-    static std::ostream err(std::cerr.rdbuf()); // error
     static std::ostream dbg(std::clog.rdbuf()); // debugging
   }
 
@@ -149,7 +188,7 @@ namespace srz
   {
 # if defined(__clang__)
 #   define _srz_impl_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
-#   define _srz_impl_IGNORE(WARNING, ...)          \
+#   define _srz_impl_CLANG_IGNORE(WARNING, ...)          \
       _srz_impl_PRAGMA(clang diagnostic push)            \
       _srz_impl_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
@@ -159,8 +198,8 @@ namespace srz
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define _srz_impl_LIKELY   _srz_impl_IGNORE("-Wc++20-extensions", [[likely]])
-#   define _srz_impl_UNLIKELY _srz_impl_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define _srz_impl_LIKELY   _srz_impl_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define _srz_impl_UNLIKELY _srz_impl_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
 #   define _srz_impl_LIKELY   [[likely]]
 #   define _srz_impl_UNLIKELY [[unlikely]]
@@ -200,7 +239,7 @@ namespace srz
 // support from clang 10.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 10)
 # if __cplusplus < 202002L
-#   define _srz_impl_NODISCARD_REASON(REASON) _srz_impl_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
+#   define _srz_impl_NODISCARD_REASON(REASON) _srz_impl_CLANG_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
 # else
 #   define _srz_impl_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
 # endif
@@ -224,15 +263,15 @@ namespace srz
 
 # if defined(_srz_impl_THREADSAFE)
 #   undef  _srz_impl_THREADSAFE
-#   define _srz_impl_THREADLOCAL     thread_local
-#   define _srz_impl_ATOMIC(T)       std::atomic<T>
-#   define _srz_impl_DECLARE_MUTEX(...) static std::mutex __VA_ARGS__
-#   define _srz_impl_DECLARE_LOCK(MUTEX)     std::lock_guard<decltype(MUTEX)> _lock{MUTEX}
+#   define _srz_impl_THREADLOCAL         thread_local
+#   define _srz_impl_ATOMIC(T)           std::atomic<T>
+#   define _srz_impl_DECLARE_MUTEX(...)  static std::mutex __VA_ARGS__
+#   define _srz_impl_DECLARE_LOCK(MUTEX) std::lock_guard<decltype(MUTEX)> _lock{MUTEX}
 # else
 #   define _srz_impl_THREADLOCAL
-#   define _srz_impl_ATOMIC(T)       T
+#   define _srz_impl_ATOMIC(T)           T
 #   define _srz_impl_DECLARE_MUTEX(...)
-#   define _srz_impl_DECLARE_LOCK(MUTEX)     void(0)
+#   define _srz_impl_DECLARE_LOCK(MUTEX)
 # endif
 
     static _srz_impl_THREADLOCAL std::vector<uint8_t> _buffer;
@@ -329,19 +368,19 @@ namespace srz
 
     template<typename T, typename = _if_not_Serializable<T>>
     constexpr
-    void _serialization_implementation(const T& data, size_t N = 1)
+    void _serialization_implementation(const T& data_, const size_t N_ = 1)
     {
-      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N);
+      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N_);
 
-      const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
-      _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
+      const auto data_ptr = reinterpret_cast<const uint8_t*>(&data_);
+      _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N_);
     }
 
     template<typename T, typename = _if_not_Serializable<T>>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(T& data, size_t N = 1)
+    void _deserialization_implementation(T& data_, const size_t N_ = 1)
     {
-      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N);
+      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N_);
 
       _srz_impl_SAFE(
         if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
@@ -350,7 +389,7 @@ namespace srz
           return;
         }
 
-        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N))
+        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N_))
         {
           _info =  Info::MISSING_BYTES;
           return;
@@ -358,34 +397,41 @@ namespace srz
       )
 
       // set data's bytes one by one from the front of the buffer
-      auto data_ptr   = reinterpret_cast<uint8_t*>(&data);
-      auto buffer_ptr = _buffer.data() + _front_of_buffer;
-      std::memcpy(data_ptr, buffer_ptr, sizeof(T) * N);
+      const auto data_ptr   = reinterpret_cast<uint8_t*>(&data_);
+      const auto buffer_ptr = _buffer.data() + _front_of_buffer;
+      std::memcpy(data_ptr, buffer_ptr, sizeof(T) * N_);
 
-      _front_of_buffer += sizeof(T) * N;
+      _front_of_buffer += sizeof(T) * N_;
     }
 
     _srz_impl_MAYBE_UNUSED
     static
-    void size_t_serialization_implementation(size_t size)
+    void size_t_serialization_implementation(size_t size_)
     {
+#   if defined(SRZ_FIXED_LENGHT)
+      _serialization_implementation(size_);
+#   else
       _srz_impl_IDEBUGGING("size_t");
 
       uint8_t bytes_used = 1;
-      for (size_t k = size; k >>= 8; ++bytes_used) {}
+      for (size_t k = size_; k >>= 8; ++bytes_used) {}
 
       _buffer.push_back(bytes_used);
 
       for (size_t k = 0; bytes_used--; k += 8)
       {
-        _buffer.push_back(static_cast<uint8_t>((size >> k) & 0xFF));
+        _buffer.push_back(static_cast<uint8_t>((size_ >> k) & 0xFF));
       }
+#   endif
     }
 
     _srz_impl_MAYBE_UNUSED
     static
-    void size_t_deserialization_implementation(size_t& size)
+    void size_t_deserialization_implementation(size_t& size_)
     {
+#   if defined(SRZ_FIXED_LENGHT)
+      _deserialization_implementation(size_);
+#   else
       _srz_impl_IDEBUGGING("size_t");
 
       _srz_impl_SAFE(
@@ -406,11 +452,12 @@ namespace srz
         }
       )
 
-      size = 0;
+      size_ = 0;
       for (size_t k = 0; bytes_used--; k += 8)
       {
-        size |= (_buffer[_front_of_buffer++] << k);
+        size_ |= (_buffer[_front_of_buffer++] << k);
       }
+#   endif
     }
 
     inline
@@ -598,15 +645,13 @@ namespace srz
     virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence() noexcept = 0;
 
-    template<typename T, typename... T_>
+    template<typename... T>
     inline // recursive calls to appropriate serialization overloads
-    void serialization(const T& data, const T_&... remaining_data) const noexcept;
-    _srz_impl_CONSTEXPR_CPP14 void serialization() const noexcept {}
+    void serialization(const T&... data) const noexcept;
 
-    template<typename T, typename... T_>
+    template<typename... T>
     inline // recursive calls to appropriate deserialization overloads
-    void deserialization(T& data, T_&... remaining_data) noexcept;
-    _srz_impl_CONSTEXPR_CPP14 void deserialization() noexcept {}
+    void deserialization(T&... data) noexcept;
 
     friend void _impl::_serialization_implementation(const Serializable& data);
     friend void _impl::_deserialization_implementation(Serializable& data);
@@ -662,7 +707,7 @@ namespace srz
       }
       else
       {
-        for (T character : string_)
+        for (const auto character : string_)
         {
           _serialization_implementation(character);
         }
@@ -1210,6 +1255,7 @@ namespace srz
 
     _impl::_buffer.assign(data_, data_ + size_);
     _impl::_front_of_buffer = 0;
+
     _srz_impl_SAFE(
       _impl::_info = Info::ALL_GOOD;
     )
@@ -1241,18 +1287,16 @@ namespace srz
     return srz::deserialize(data_, size_, *this);
   }
 
-  template<typename T, typename... T_>
-  void Serializable::serialization(const T& data_, const T_&... remaining_data_) const noexcept
+  template<typename... T>
+  void Serializable::serialization(const T&... data_) const noexcept
   {
-    _impl::_serialization_implementation(data_);
-    serialization(remaining_data_...);
+    _impl::_serialize_things(data_...);
   }
 
-  template<typename T, typename... T_>
-  void Serializable::deserialization(T& data_, T_&... remaining_data_) noexcept
+  template<typename... T>
+  void Serializable::deserialization(T&... data_) noexcept
   {
-    _impl::_deserialization_implementation(data_);
-    deserialization(remaining_data_...);
+    _impl::_deserialize_things(data_...);
   }
 //----------------------------------------------------------------------------------------------------------------------
 # undef  SRZ_SERIALIZATION_SEQUENCE
@@ -1286,8 +1330,8 @@ namespace srz
 
     for (size_t k = 0; k < size; ++k)
     {
-      char nybl_hi = data[k] >> 4;
-      char nybl_lo = data[k] & 0xF;
+      const char nybl_hi = data[k] >> 4;
+      const char nybl_lo = data[k] & 0xF;
 
       buffer.push_back((nybl_hi <= 0x9) ? (nybl_hi + '0') : (nybl_hi + 'A' - 10));
       buffer.push_back((nybl_lo <= 0x9) ? (nybl_lo + '0') : (nybl_lo + 'A' - 10));
@@ -1302,7 +1346,7 @@ namespace srz
 //----------------------------------------------------------------------------------------------------------------------
 }
 #undef _srz_impl_PRAGMA
-#undef _srz_impl_IGNORE
+#undef _srz_impl_CLANG_IGNORE
 #undef _srz_impl_THREADLOCAL
 #undef _srz_impl_ATOMIC
 #undef _srz_impl_DECLARE_MUTEX
