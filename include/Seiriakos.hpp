@@ -35,11 +35,9 @@ SOFTWARE.
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
 deserialize objects.
 
-srz::Serializable;
-
 -----inclusion guard------------------------------------------------------------------------------*/
-#ifndef _srz_hpp
-#define _srz_hpp
+#ifndef _seiriakos_hpp
+#define _seiriakos_hpp
 //---necessary standard libraries-------------------------------------------------------------------
 #include <cstddef>     // for size_t
 #include <cstdint>     // for uint8_t
@@ -48,12 +46,12 @@ srz::Serializable;
 #include <iostream>    // for std::cout, std::cerr
 #include <cstring>     // for std::memcpy
 //---conditionally necessary standard libraries-----------------------------------------------------
-#if defined(__STDCPP_THREADS__) and not defined(SEIRIAKOS_NOT_THREADSAFE)
+#if defined(__STDCPP_THREADS__) and not defined(SRZ_NOT_THREADSAFE)
 # define  _srz_impl_THREADSAFE
 # include <atomic> // for std::atomic
 # include <mutex>  // for std::mutex, std::lock_guard
-#endif 
-#if defined(SEIRIAKOS_LOGGING)
+#endif
+#if defined(SRZ_DEBUGGING)
 #if defined (__clang__) or defined(__GNUC__)
 # include <cxxabi.h> // for abi::__cxa_demangle
 #endif
@@ -74,7 +72,7 @@ srz::Serializable;
 #include <set>
 #include <tuple>
 //---Seiriakos library------------------------------------------------------------------------------
-namespace Seiriakos
+namespace srz
 {
   class Info;
 
@@ -99,16 +97,16 @@ namespace Seiriakos
   class Serializable;
 
   // macro to facilitate serialization/deserialization member function implementations
-# define SEIRIAKOS_SEQUENCE(...)
+# define SRZ_SERIALIZATION_SEQUENCE(...)
 
   inline // print bytes from memory
-  const char* bytes_as_cstring(const uint8_t data[], const size_t size);
+  auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*;
 
   namespace _io
   {
-    static std::ostream out(std::cout.rdbuf()); // output ostream
-    static std::ostream err(std::cerr.rdbuf()); // error ostream
-    static std::ostream log(std::clog.rdbuf()); // logging ostream
+    static std::ostream out(std::cout.rdbuf()); // output
+    static std::ostream err(std::cerr.rdbuf()); // error
+    static std::ostream dbg(std::clog.rdbuf()); // debugging
   }
 
   namespace _version
@@ -133,16 +131,21 @@ namespace Seiriakos
 
     Info() = delete;
     constexpr Info(Code code) noexcept : _code(code) { }
-    void operator=(Code code) noexcept { if (_code != Info::ALL_GOOD) _code = code; }
+
+    void operator=(Code code) noexcept
+    {
+      if (_code != Info::ALL_GOOD) _code = code;
+    }
+
     constexpr operator Code() const noexcept { return _code; }
-    explicit  operator bool() const = delete;        
     constexpr const char* description() const { return "text"; }
+    operator bool() const = delete;
 
   private:
     Code _code;
   };
 //----------------------------------------------------------------------------------------------------------------------
-  namespace _backend
+  namespace _impl
   {
 # if defined(__clang__)
 #   define _srz_impl_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
@@ -156,18 +159,30 @@ namespace Seiriakos
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define _srz_impl_HOT   _srz_impl_IGNORE("-Wc++20-extensions", [[likely]])
-#   define _srz_impl_COLD _srz_impl_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define _srz_impl_LIKELY   _srz_impl_IGNORE("-Wc++20-extensions", [[likely]])
+#   define _srz_impl_UNLIKELY _srz_impl_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
-#   define _srz_impl_HOT   [[likely]]
-#   define _srz_impl_COLD [[unlikely]]
+#   define _srz_impl_LIKELY   [[likely]]
+#   define _srz_impl_UNLIKELY [[unlikely]]
 # endif
 # elif defined(__GNUC__) and (__GNUC__ >= 10)
-#   define _srz_impl_HOT   [[likely]]
-#   define _srz_impl_COLD [[unlikely]]
+#   define _srz_impl_LIKELY   [[likely]]
+#   define _srz_impl_UNLIKELY [[unlikely]]
 # else
-#   define _srz_impl_HOT
-#   define _srz_impl_COLD
+#   define _srz_impl_LIKELY
+#   define _srz_impl_UNLIKELY
+# endif
+
+// support from clang 3.9.0 and GCC 4.7.3 onward
+# if defined(__clang__)
+#   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
+#   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
+# elif defined(__GNUC__)
+#   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
+#   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
+# else
+#   define _srz_impl_EXPECTED(CONDITION) (CONDITION) _srz_impl_LIKELY
+#   define _srz_impl_ABNORMAL(CONDITION) (CONDITION) _srz_impl_UNLIKELY
 # endif
 
 // support from clang 3.9.0 and GCC 5.1 onward
@@ -195,7 +210,20 @@ namespace Seiriakos
 #   define _srz_impl_NODISCARD_REASON(REASON) _srz_impl_NODISCARD
 # endif
 
+# if __cplusplus >= 201402L
+#   define _srz_impl_CONSTEXPR_CPP14 constexpr
+# else
+#   define _srz_impl_CONSTEXPR_CPP14
+# endif
+
+# if __cplusplus >= 201703L
+#   define _srz_impl_CONSTEXPR_CPP17 constexpr
+# else
+#   define _srz_impl_CONSTEXPR_CPP17
+# endif
+
 # if defined(_srz_impl_THREADSAFE)
+#   undef  _srz_impl_THREADSAFE
 #   define _srz_impl_THREADLOCAL     thread_local
 #   define _srz_impl_ATOMIC(T)       std::atomic<T>
 #   define _srz_impl_DECLARE_MUTEX(...) static std::mutex __VA_ARGS__
@@ -211,10 +239,9 @@ namespace Seiriakos
     static _srz_impl_THREADLOCAL size_t               _front_of_buffer;
     static _srz_impl_THREADLOCAL Info                 _info = Info::ALL_GOOD;
 
-# if defined(SEIRIAKOS_LOGGIGN)
+# if defined(SRZ_DEBUGGING)
     template<typename T>
-    inline
-    const char* _underlying_name()
+    auto _underlying_name() -> const char*
     {
       static _srz_impl_THREADLOCAL char _underlying_name_buffer[256];
 
@@ -246,28 +273,29 @@ namespace Seiriakos
       return _underlying_name_buffer;
     }
 
-    _srz_impl_DECLARE_MUTEX(_log_mtx);
-    _srz_impl_MAYBE_UNUSED static _srz_impl_THREADLOCAL char _log_buffer[256] = {};
+    _srz_impl_DECLARE_MUTEX(_dbg_mtx);
+    _srz_impl_MAYBE_UNUSED static _srz_impl_THREADLOCAL char _dbg_buffer[256] = {};
 
-    class _indentlog
+    class _indentdebug
     {
     public:
       template<typename... T>
-      _indentlog(T... arguments) noexcept
+      _srz_impl_CONSTEXPR_CPP14
+      _indentdebug(T... arguments) noexcept
       {
-        _srz_impl_DECLARE_LOCK(_backend::_log_mtx);
+        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);
 
         for (unsigned k = _depth()++; k--;)
         {
-          _io::log << "  ";
+          _io::dbg << "  ";
         }
 
-        std::sprintf(_log_buffer, arguments...);
+        std::sprintf(_dbg_buffer, arguments...);
 
-        _io::log << _log_buffer << std::endl;
+        _io::dbg << _dbg_buffer << std::endl;
       }
 
-      ~_indentlog() noexcept { --_depth(); }
+      ~_indentdebug() noexcept { --_depth(); }
     private:
       _srz_impl_ATOMIC(unsigned)& _depth()
       {
@@ -276,51 +304,53 @@ namespace Seiriakos
       };
     };
 
-#   define _srz_impl_ILOG(...) _backend::_indentlog ilog(__VA_ARGS__)
-#   define _srz_impl_LOG(...)                                                \
-      [&](const char* caller){                                               \
-        _srz_impl_DECLARE_LOCK(_backend::_log_mtx);                                  \
-        std::sprintf(_backend::_log_buffer, __VA_ARGS__);                    \
-        _io::log << caller << ": " << _backend::_log_buffer << std::endl; \
+#   define _srz_impl_IDEBUGGING(...) _impl::_indentdebug _idbg(__VA_ARGS__)
+#   define _srz_impl_DEBUGGING(...)                                    \
+      [&](const char* const caller){                                   \
+        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);                       \
+        std::sprintf(_impl::_dbg_buffer, __VA_ARGS__);                 \
+        _io::dbg << caller << ": " << _impl::_dbg_buffer << std::endl; \
       }(__func__)
 # else
-#   define _srz_impl_ILOG(...) void(0)
-#   define _srz_impl_LOG(...)  void(0)
+#   define _srz_impl_IDEBUGGING(...) void(0)
+#   define _srz_impl_DEBUGGING(...)  void(0)
 # endif
 
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
-   
+
     template<typename T, typename = _if_not_Serializable<T>>
+    constexpr
     void _serialization_implementation(const T& data, size_t N = 1)
     {
-      _srz_impl_ILOG("%s x%u", _underlying_name<T>(),  N);
+      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N);
 
       const uint8_t* data_ptr = reinterpret_cast<const uint8_t*>(&data);
       _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N);
     }
 
     template<typename T, typename = _if_not_Serializable<T>>
+    _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(T& data, size_t N = 1)
     {
-      _srz_impl_ILOG("%s x%u", _underlying_name<T>(),  N);
+      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N);
 
-      if (_front_of_buffer >= _buffer.size()) _srz_impl_COLD
+      if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
       {
         _info = Info::EMPTY_BUFFER;
         return;
       }
 
-      if ((_buffer.size() - _front_of_buffer) < (sizeof(T) * N)) _srz_impl_COLD
+      if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N))
       {
         _info =  Info::MISSING_BYTES;
         return;
       }
 
       // set data's bytes one by one from the front of the buffer
-      uint8_t* data_ptr    = reinterpret_cast<uint8_t*>(&data);
-      uint8_t* _buffer_ptr = _buffer.data() + _front_of_buffer;
-      std::memcpy(data_ptr, _buffer_ptr, sizeof(T) * N);
+      auto data_ptr   = reinterpret_cast<uint8_t*>(&data);
+      auto buffer_ptr = _buffer.data() + _front_of_buffer;
+      std::memcpy(data_ptr, buffer_ptr, sizeof(T) * N);
 
       _front_of_buffer += sizeof(T) * N;
     }
@@ -329,7 +359,7 @@ namespace Seiriakos
     static
     void size_t_serialization_implementation(size_t size)
     {
-      _srz_impl_ILOG("size_t");
+      _srz_impl_IDEBUGGING("size_t");
 
       uint8_t bytes_used = 1;
       for (size_t k = size; k >>= 8; ++bytes_used) {}
@@ -346,9 +376,9 @@ namespace Seiriakos
     static
     void size_t_deserialization_implementation(size_t& size)
     {
-      _srz_impl_ILOG("size_t");
+      _srz_impl_IDEBUGGING("size_t");
 
-      if (_front_of_buffer >= _buffer.size()) _srz_impl_COLD
+      if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
       {
         _info = Info::EMPTY_BUFFER;
         return;
@@ -356,7 +386,7 @@ namespace Seiriakos
 
       uint8_t bytes_used = _buffer[_front_of_buffer++];
 
-      if ((_buffer.size() - _front_of_buffer) < bytes_used) _srz_impl_COLD
+      if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
       {
         _info = Info::MISSING_BYTES;
         return;
@@ -370,131 +400,167 @@ namespace Seiriakos
     }
 
     inline
-    void _serialization_implementation(const Serializable& data);
+    void _serialization_implementation(const Serializable& serializable);
 
     inline
-    void _deserialization_implementation(Serializable& data);
+    void _deserialization_implementation(Serializable& serializable);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::complex<T>& complex);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::complex<T>& complex);
 
     template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::basic_string<T>& string);
 
     template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(std::basic_string<T>& string);
 
     template<typename T, size_t N>
+    _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::array<T, N>& array);
 
     template<typename T, size_t N>
+    _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(std::array<T, N>& array);
 
     template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::vector<T>& vector);
 
     template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(std::vector<T>& vector);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::list<T>& list);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::list<T>& list);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::deque<T>& deque);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::deque<T>& deque);
 
     template<typename T1, typename T2>
+    constexpr
     void _serialization_implementation(const std::pair<T1, T2>& pair);
 
     template<typename T1, typename T2>
+    constexpr
     void _deserialization_implementation(std::pair<T1, T2>& pair);
 
     template<typename T1, typename T2>
+    constexpr
     void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map);
 
     template<typename T1, typename T2>
+    constexpr
     void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map);
 
     template<typename T1, typename T2>
+    constexpr
     void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap);
 
     template<typename T1, typename T2>
+    constexpr
     void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap);
 
     template<typename T1, typename T2>
+    constexpr
     void _serialization_implementation(const std::map<T1, T2>& map);
 
     template<typename T1, typename T2>
+    constexpr
     void _deserialization_implementation(std::map<T1, T2>& map);
 
     template<typename T1, typename T2>
+    constexpr
     void _serialization_implementation(const std::multimap<T1, T2>& multimap);
 
     template<typename T1, typename T2>
+    constexpr
     void _deserialization_implementation(std::multimap<T1, T2>& multimap);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::unordered_set<T>& unordered_set);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::unordered_set<T>& unordered_set);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::set<T>& set);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::set<T>& set);
 
     template<typename T>
+    constexpr
     void _serialization_implementation(const std::multiset<T>& multiset);
 
     template<typename T>
+    constexpr
     void _deserialization_implementation(std::multiset<T>& multiset);
 
     template<typename... T>
+    constexpr
     void _serialization_implementation(const std::tuple<T...>& tuple);
 
     template<typename... T>
+    constexpr
     void _deserialization_implementation(std::tuple<T...>& tuple);
 
     template<typename T, typename... T_>
+    constexpr
     auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) == 0, size_t>::type
     {
       return sizeof(T);
     }
 
     template<typename T, typename... T_>
+    constexpr
     auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) != 0, size_t>::type
     {
       return sizeof(T) + _sizeof_things<T_...>();
     }
 
-    inline void _serialize_things() {}
+    inline _srz_impl_CONSTEXPR_CPP14 void _serialize_things() {}
 
     template<typename T, typename... T_>
+    constexpr
     void _serialize_things(const T& thing, const T_&... remaining_things)
     {
       _serialization_implementation(thing);
       _serialize_things(remaining_things...);
     }
 
-    inline void _deserialize_things() {}
+    inline _srz_impl_CONSTEXPR_CPP14 void _deserialize_things() {}
 
     template<typename T, typename... T_>
+    constexpr
     void _deserialize_things(T& thing, T_&... remaining_things)
     {
       _deserialization_implementation(thing);
@@ -514,72 +580,75 @@ namespace Seiriakos
   protected:
     virtual // serialization sequence (provided by the inheriting class)
     void serialization_sequence() const noexcept = 0;
-    
+
     virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence() noexcept = 0;
 
     template<typename T, typename... T_>
     inline // recursive calls to appropriate serialization overloads
     void serialization(const T& data, const T_&... remaining_data) const noexcept;
-    void serialization() const noexcept {}
+    _srz_impl_CONSTEXPR_CPP14 void serialization() const noexcept {}
 
     template<typename T, typename... T_>
     inline // recursive calls to appropriate deserialization overloads
     void deserialization(T& data, T_&... remaining_data) noexcept;
-    void deserialization() noexcept {}
-    
-  friend void _backend::_serialization_implementation(const Serializable& data);
-  friend void _backend::_deserialization_implementation(Serializable& data);
+    _srz_impl_CONSTEXPR_CPP14 void deserialization() noexcept {}
+
+    friend void _impl::_serialization_implementation(const Serializable& data);
+    friend void _impl::_deserialization_implementation(Serializable& data);
   };
 //----------------------------------------------------------------------------------------------------------------------
-  namespace _backend
+  namespace _impl
   {
-    void _serialization_implementation(const Serializable& data)
+    void _serialization_implementation(const Serializable& serializable_)
     {
-      _srz_impl_ILOG("Serializable");
-      
-      data.serialization_sequence(); // serialize data via its specialized implementation
+      _srz_impl_IDEBUGGING("Serializable");
+
+      serializable_.serialization_sequence();
     }
 
-    void _deserialization_implementation(Serializable& data)
+    void _deserialization_implementation(Serializable& serializable_)
     {
-      _srz_impl_ILOG("Serializable");
+      _srz_impl_IDEBUGGING("Serializable");
 
-      data.deserialization_sequence(); // serialize data via its specialized implementation
-    }
-
-    template<typename T>
-    void _serialization_implementation(const std::complex<T>& complex)
-    {
-      _srz_impl_ILOG("std::complex<%s>", _underlying_name<T>());
-
-      _serialization_implementation(complex.real);
-      _serialization_implementation(complex.imag);
+      serializable_.deserialization_sequence();
     }
 
     template<typename T>
+    constexpr
+    void _serialization_implementation(const std::complex<T>& complex_)
+    {
+      _srz_impl_IDEBUGGING("std::complex<%s>", _underlying_name<T>());
+
+      _serialization_implementation(complex_.real);
+      _serialization_implementation(complex_.imag);
+    }
+
+    template<typename T>
+    constexpr
     void _deserialization_implementation(std::complex<T>& complex)
     {
-      _srz_impl_ILOG("std::complex<%s>", _underlying_name<T>());
-      
+      _srz_impl_IDEBUGGING("std::complex<%s>", _underlying_name<T>());
+
       _deserialization_implementation(complex.real);
       _deserialization_implementation(complex.imag);
     }
 
     template<typename T>
-    void _serialization_implementation(const std::basic_string<T>& string)
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::basic_string<T>& string_)
     {
-      _srz_impl_ILOG("std::basic_string<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(string.size());
+      size_t_serialization_implementation(string_.size());
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _serialization_implementation(string[0], string.size());
+        _serialization_implementation(string_[0], string_.size());
       }
       else
       {
-        for (T character : string)
+        for (T character : string_)
         {
           _serialization_implementation(character);
         }
@@ -587,22 +656,23 @@ namespace Seiriakos
     }
 
     template<typename T>
-    void _deserialization_implementation(std::basic_string<T>& string)
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::basic_string<T>& string_)
     {
-      _srz_impl_ILOG("std::basic_string<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      string.resize(size);
+      string_.resize(size);
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _deserialization_implementation(string[0], size);
+        _deserialization_implementation(string_[0], size);
       }
       else
       {
-        for (auto& character : string)
+        for (auto& character : string_)
         {
           _deserialization_implementation(character);
         }
@@ -610,17 +680,18 @@ namespace Seiriakos
     }
 
     template<typename T, size_t N>
-    void _serialization_implementation(const std::array<T, N>& array)
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::array<T, N>& array_)
     {
-      _srz_impl_ILOG("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
+      _srz_impl_IDEBUGGING("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _serialization_implementation(array[0], N);
+        _serialization_implementation(array_[0], N);
       }
       else
       {
-        for (const auto& value : array)
+        for (const auto& value : array_)
         {
           _serialization_implementation(value);
         }
@@ -628,17 +699,18 @@ namespace Seiriakos
     }
 
     template<typename T, size_t N>
-    void _deserialization_implementation(std::array<T, N>& array)
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::array<T, N>& array_)
     {
-      _srz_impl_ILOG("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
+      _srz_impl_IDEBUGGING("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _deserialization_implementation(array[0], N);
+        _deserialization_implementation(array_[0], N);
       }
       else
       {
-        for (auto& value : array)
+        for (auto& value : array_)
         {
           _deserialization_implementation(value);
         }
@@ -646,19 +718,20 @@ namespace Seiriakos
     }
 
     template<typename T>
-    void _serialization_implementation(const std::vector<T>& vector)
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::vector<T>& vector_)
     {
-      _srz_impl_ILOG("std::vector<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(vector.size());
+      size_t_serialization_implementation(vector_.size());
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _serialization_implementation(vector[0], vector.size());
+        _serialization_implementation(vector_[0], vector_.size());
       }
       else
       {
-        for (const auto& value : vector)
+        for (const auto& value : vector_)
         {
           _serialization_implementation(value);
         }
@@ -666,22 +739,23 @@ namespace Seiriakos
     }
 
     template<typename T>
-    void _deserialization_implementation(std::vector<T>& vector)
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::vector<T>& vector_)
     {
-      _srz_impl_ILOG("std::vector<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      vector.resize(size);
+      vector_.resize(size);
 
-      if (std::is_fundamental<T>::value) _srz_impl_HOT
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
-        _deserialization_implementation(vector[0], size);
+        _deserialization_implementation(vector_[0], size);
       }
       else
       {
-        for (auto& value : vector)
+        for (auto& value : vector_)
         {
           _deserialization_implementation(value);
         }
@@ -689,454 +763,482 @@ namespace Seiriakos
     }
 
     template<typename T>
-    void _serialization_implementation(const std::list<T>& list)
+    constexpr
+    void _serialization_implementation(const std::list<T>& list_)
     {
-      _srz_impl_ILOG("std::list<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(list.size());
+      size_t_serialization_implementation(list_.size());
 
-      for (const auto& value : list)
+      for (const auto& value : list_)
       {
         _serialization_implementation(value);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::list<T>& list)
+    constexpr
+    void _deserialization_implementation(std::list<T>& list_)
     {
-      _srz_impl_ILOG("std::list<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      list.resize(size);
-      for (auto& value : list)
+      list_.resize(size);
+      for (auto& value : list_)
       {
         _deserialization_implementation(value);
       }
     }
 
     template<typename T>
-    void _serialization_implementation(const std::deque<T>& deque)
+    constexpr
+    void _serialization_implementation(const std::deque<T>& deque_)
     {
-      _srz_impl_ILOG("std::deque<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(deque.size());
+      size_t_serialization_implementation(deque_.size());
 
-      for (const auto& value : deque)
+      for (const auto& value : deque_)
       {
         _serialization_implementation(value);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::deque<T>& deque)
+    constexpr
+    void _deserialization_implementation(std::deque<T>& deque_)
     {
-      _srz_impl_ILOG("std::deque<%s>", _underlying_name<T>());
+      _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
       size_t size = {};
       size_t_deserialization_implementation(size);
-      
-      deque.resize(size);
-      for (auto& value : deque)
+
+      deque_.resize(size);
+      for (auto& value : deque_)
       {
         _deserialization_implementation(value);
       }
     }
 
     template<typename T1, typename T2>
-    void _serialization_implementation(const std::pair<T1, T2>& pair)
+    constexpr
+    void _serialization_implementation(const std::pair<T1, T2>& pair_)
     {
-      _srz_impl_ILOG("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
+      _srz_impl_IDEBUGGING("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
 
-      _serialization_implementation(pair.first);
-      _serialization_implementation(pair.second);
+      _serialization_implementation(pair_.first);
+      _serialization_implementation(pair_.second);
     }
 
     template<typename T1, typename T2>
-    void _deserialization_implementation(std::pair<T1, T2>& pair)
+    constexpr
+    void _deserialization_implementation(std::pair<T1, T2>& pair_)
     {
-      _srz_impl_ILOG("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
+      _srz_impl_IDEBUGGING("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
 
-      _deserialization_implementation(pair.first);
-      _deserialization_implementation(pair.second);
+      _deserialization_implementation(pair_.first);
+      _deserialization_implementation(pair_.second);
     }
 
     template<typename T1, typename T2>
-    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map)
+    constexpr
+    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map_)
     {
-      _srz_impl_ILOG("std::unordered_map");
+      _srz_impl_IDEBUGGING("std::unordered_map");
 
-      size_t_serialization_implementation(unordered_map.size());
+      size_t_serialization_implementation(unordered_map_.size());
 
-      for (const auto& key_value : unordered_map)
+      for (const auto& key_value : unordered_map_)
       {
         _serialization_implementation(key_value);
       }
     }
 
     template<typename T1, typename T2>
-    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map)
+    constexpr
+    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map_)
     {
-      _srz_impl_ILOG("std::unordered_map");
+      _srz_impl_IDEBUGGING("std::unordered_map");
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      unordered_map.clear();
-      unordered_map.reserve(size);
+      unordered_map_.clear();
+      unordered_map_.reserve(size);
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        unordered_map.insert(std::move(key_value));
+        unordered_map_.insert(std::move(key_value));
       }
     }
 
     template<typename T1, typename T2>
-    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap)
+    constexpr
+    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap_)
     {
-      _srz_impl_ILOG("std::unordered_multimap");
-      
-      size_t_serialization_implementation(unordered_multimap.size());
+      _srz_impl_IDEBUGGING("std::unordered_multimap");
 
-      for (const auto& key_value : unordered_multimap)
+      size_t_serialization_implementation(unordered_multimap_.size());
+
+      for (const auto& key_value : unordered_multimap_)
       {
         _serialization_implementation(key_value);
       }
     }
 
     template<typename T1, typename T2>
-    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap)
+    constexpr
+    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap_)
     {
-      _srz_impl_ILOG("std::unordered_multimap");
+      _srz_impl_IDEBUGGING("std::unordered_multimap");
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      unordered_multimap.clear();
-      unordered_multimap.reserve(size);
+      unordered_multimap_.clear();
+      unordered_multimap_.reserve(size);
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        unordered_multimap.insert(std::move(key_value));
+        unordered_multimap_.insert(std::move(key_value));
       }
     }
 
     template<typename T1, typename T2>
-    void _serialization_implementation(const std::map<T1, T2>& map)
+    constexpr
+    void _serialization_implementation(const std::map<T1, T2>& map_)
     {
-      _srz_impl_ILOG("std::map");
-      
-      size_t_serialization_implementation(map.size());
+      _srz_impl_IDEBUGGING("std::map");
 
-      for (const auto& key_value : map)
+      size_t_serialization_implementation(map_.size());
+
+      for (const auto& key_value : map_)
       {
         _serialization_implementation(key_value);
       }
     }
 
     template<typename T1, typename T2>
-    void _deserialization_implementation(std::map<T1, T2>& map)
+    constexpr
+    void _deserialization_implementation(std::map<T1, T2>& map_)
     {
-      _srz_impl_ILOG("std::map");
+      _srz_impl_IDEBUGGING("std::map");
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      map.clear();
+      map_.clear();
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        map.insert(std::move(key_value));
+        map_.insert(std::move(key_value));
       }
     }
 
     template<typename T1, typename T2>
-    void _serialization_implementation(const std::multimap<T1, T2>& multimap)
+    constexpr
+    void _serialization_implementation(const std::multimap<T1, T2>& multimap_)
     {
-      _srz_impl_ILOG("std::multimap");
-      
-      size_t_serialization_implementation(multimap.size());
+      _srz_impl_IDEBUGGING("std::multimap");
 
-      for (const auto& key_value : multimap)
+      size_t_serialization_implementation(multimap_.size());
+
+      for (const auto& key_value : multimap_)
       {
         _serialization_implementation(key_value);
       }
     }
 
     template<typename T1, typename T2>
-    void _deserialization_implementation(std::multimap<T1, T2>& multimap)
+    constexpr
+    void _deserialization_implementation(std::multimap<T1, T2>& multimap_)
     {
-      _srz_impl_ILOG("std::multimap");
+      _srz_impl_IDEBUGGING("std::multimap");
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      multimap.clear();
+      multimap_.clear();
 
       std::pair<T1, T2> key_value = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key_value);
-        multimap.insert(std::move(key_value));
+        multimap_.insert(std::move(key_value));
       }
     }
 
     template<typename T>
-    void _serialization_implementation(const std::unordered_set<T>& unordered_set)
+    constexpr
+    void _serialization_implementation(const std::unordered_set<T>& unordered_set_)
     {
-      _srz_impl_ILOG("std::unordered_set");
+      _srz_impl_IDEBUGGING("std::unordered_set");
 
-      size_t_serialization_implementation(unordered_set.size());
+      size_t_serialization_implementation(unordered_set_.size());
 
-      for (const auto& key : unordered_set)
+      for (const auto& key : unordered_set_)
       {
         _serialization_implementation(key);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::unordered_set<T>& unordered_set)
+    constexpr
+    void _deserialization_implementation(std::unordered_set<T>& unordered_set_)
     {
-      _srz_impl_ILOG("std::unordered_set");
+      _srz_impl_IDEBUGGING("std::unordered_set");
 
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      unordered_set.clear();
-      unordered_set.reserve(size);
+      unordered_set_.clear();
+      unordered_set_.reserve(size);
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        unordered_set.insert(std::move(key));
+        unordered_set_.insert(std::move(key));
       }
     }
 
     template<typename T>
-    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset)
+    constexpr
+    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset_)
     {
-      _srz_impl_ILOG("std::unordered_multiset");
-      
-      size_t_serialization_implementation(unordered_multiset.size());
+      _srz_impl_IDEBUGGING("std::unordered_multiset");
 
-      for (const auto& key : unordered_multiset)
+      size_t_serialization_implementation(unordered_multiset_.size());
+
+      for (const auto& key : unordered_multiset_)
       {
         _serialization_implementation(key);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset)
+    constexpr
+    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset_)
     {
-      _srz_impl_ILOG("std::unordered_multiset");
-      
+      _srz_impl_IDEBUGGING("std::unordered_multiset");
+
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      unordered_multiset.clear();
-      unordered_multiset.reserve(size);
+      unordered_multiset_.clear();
+      unordered_multiset_.reserve(size);
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        unordered_multiset.insert(std::move(key));
+        unordered_multiset_.insert(std::move(key));
       }
     }
 
     template<typename T>
-    void _serialization_implementation(const std::set<T>& set)
+    constexpr
+    void _serialization_implementation(const std::set<T>& set_)
     {
-      _srz_impl_ILOG("std::set");
-      
-      size_t_serialization_implementation(set.size());
+      _srz_impl_IDEBUGGING("std::set");
 
-      for (const auto& key : set)
+      size_t_serialization_implementation(set_.size());
+
+      for (const auto& key : set_)
       {
         _serialization_implementation(key);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::set<T>& set)
+    constexpr
+    void _deserialization_implementation(std::set<T>& set_)
     {
-      _srz_impl_ILOG("std::set");
-      
+      _srz_impl_IDEBUGGING("std::set");
+
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      set.clear();
+      set_.clear();
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        set.insert(std::move(key));
+        set_.insert(std::move(key));
       }
     }
 
     template<typename T>
-    void _serialization_implementation(const std::multiset<T>& multiset)
+    constexpr
+    void _serialization_implementation(const std::multiset<T>& multiset_)
     {
-      _srz_impl_ILOG("std::multiset");
-      
-      size_t_serialization_implementation(multiset.size());
+      _srz_impl_IDEBUGGING("std::multiset");
 
-      for (const auto& key : multiset)
+      size_t_serialization_implementation(multiset_.size());
+
+      for (const auto& key : multiset_)
       {
         _serialization_implementation(key);
       }
     }
 
     template<typename T>
-    void _deserialization_implementation(std::multiset<T>& multiset)
+    constexpr
+    void _deserialization_implementation(std::multiset<T>& multiset_)
     {
-      _srz_impl_ILOG("std::multiset");
-      
+      _srz_impl_IDEBUGGING("std::multiset");
+
       size_t size = {};
       size_t_deserialization_implementation(size);
 
-      multiset.clear();
+      multiset_.clear();
 
       T key = {};
       for (size_t k = 0; k < size; ++k)
       {
         _deserialization_implementation(key);
-        multiset.insert(std::move(key));
+        multiset_.insert(std::move(key));
       }
     }
 
     template<size_t N, typename... T>
     struct _tuple_serialization
     {
-      static inline
+      static inline constexpr
       void implementation(const std::tuple<T...>& tuple);
     };
 
     template<typename... T>
     struct _tuple_serialization<0, T...>
     {
-      static void implementation(const std::tuple<T...>&) {}
+      static inline constexpr
+      void implementation(const std::tuple<T...>&) {}
     };
 
     template<size_t N, typename... T>
-    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple)
+    constexpr
+    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple_)
     {
-      _serialization_implementation(std::get<sizeof...(T) - N>(tuple));
-      _tuple_serialization<N-1, T...>::implementation(tuple);
+      _serialization_implementation(std::get<sizeof...(T) - N>(tuple_));
+      _tuple_serialization<N-1, T...>::implementation(tuple_);
     }
 
     template<typename... T>
-    void _serialization_implementation(const std::tuple<T...>& tuple)
+    constexpr
+    void _serialization_implementation(const std::tuple<T...>& tuple_)
     {
-      _srz_impl_ILOG("std::tuple");
+      _srz_impl_IDEBUGGING("std::tuple");
 
-      _tuple_serialization<sizeof...(T), T...>::implementation(tuple);
+      _tuple_serialization<sizeof...(T), T...>::implementation(tuple_);
     }
 
     template<size_t N, typename... T>
     struct _tuple_deserialization
     {
-      static inline
+      static inline constexpr
       void implementation(std::tuple<T...>& tuple);
     };
 
     template<typename... T>
     struct _tuple_deserialization<0, T...>
     {
-      static void implementation(std::tuple<T...>&) {}
+      static inline constexpr
+      void implementation(std::tuple<T...>&) {}
     };
 
     template<size_t N, typename... T>
-    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple)
+    constexpr
+    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple_)
     {
-      _deserialization_implementation(std::get<sizeof...(T) - N>(tuple));
-      _tuple_deserialization<N-1, T...>::implementation(tuple);
+      _deserialization_implementation(std::get<sizeof...(T) - N>(tuple_));
+      _tuple_deserialization<N-1, T...>::implementation(tuple_);
     }
 
     template<typename... T>
-    void _deserialization_implementation(std::tuple<T...>& tuple)
+    constexpr
+    void _deserialization_implementation(std::tuple<T...>& tuple_)
     {
-      _srz_impl_ILOG("std::tuple");
+      _srz_impl_IDEBUGGING("std::tuple");
 
-      _tuple_deserialization<sizeof...(T), T...>::implementation(tuple);
+      _tuple_deserialization<sizeof...(T), T...>::implementation(tuple_);
     }
   }
 //----------------------------------------------------------------------------------------------------------------------
   template<typename... T>
   _srz_impl_NODISCARD_REASON("serialize: ignoring the return value makes no sens")
-  auto serialize(const T&... things) noexcept -> std::vector<uint8_t>
+  auto serialize(const T&... things_) noexcept -> std::vector<uint8_t>
   {
-    _srz_impl_LOG("----serialization summary:");
+    _srz_impl_DEBUGGING("----serialization summary:");
 
-    _backend::_buffer.clear();
-    _backend::_buffer.reserve(_backend::_sizeof_things<T...>());
+    _impl::_buffer.clear();
+    _impl::_buffer.reserve(_impl::_sizeof_things<T...>());
 
-    _backend::_serialize_things(things...);
+    _impl::_serialize_things(things_...);
 
-    _srz_impl_LOG("----------------------------");
+    _srz_impl_DEBUGGING("----------------------------");
 
-    return _backend::_buffer;
+    return _impl::_buffer;
   }
 
   template<typename... T>
-  Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept
+  Info deserialize(const uint8_t data_[], const size_t size_, T&... things_) noexcept
   {
-    _srz_impl_LOG("----deserialization summary:");
+    _srz_impl_DEBUGGING("----deserialization summary:");
 
-    _backend::_buffer.assign(data, data + size);
-    _backend::_front_of_buffer = 0;
-    _backend::_info            = Info::ALL_GOOD;
+    _impl::_buffer.assign(data_, data_ + size_);
+    _impl::_front_of_buffer = 0;
+    _impl::_info            = Info::ALL_GOOD;
 
-    _backend::_deserialize_things(things...);
+    _impl::_deserialize_things(things_...);
 
-    if (_backend::_info == Info::ALL_GOOD) _srz_impl_HOT
+    if _srz_impl_EXPECTED(_impl::_info == Info::ALL_GOOD)
     {
-      if (_backend::_front_of_buffer != _backend::_buffer.size()) _srz_impl_COLD
+      if _srz_impl_ABNORMAL(_impl::_front_of_buffer != _impl::_buffer.size())
       {
-        _backend::_info = Info::SEQUENCE_MISMATCH;
+        _impl::_info = Info::SEQUENCE_MISMATCH;
       }
     }
 
-    _srz_impl_LOG("----------------------------");
+    _srz_impl_DEBUGGING("----------------------------");
 
-    return _backend::_info;
+    return _impl::_info;
   }
 //----------------------------------------------------------------------------------------------------------------------
   auto Serializable::serialize() const noexcept -> std::vector<uint8_t>
   {
-    return Seiriakos::serialize(*this);
+    return srz::serialize(*this);
   }
 
-  Info Serializable::deserialize(const uint8_t data[], size_t size) noexcept
+  Info Serializable::deserialize(const uint8_t data_[], size_t size_) noexcept
   {
-    return Seiriakos::deserialize(data, size, *this);
-  }
-  
-  template<typename T, typename... T_>
-  void Serializable::serialization(const T& data, const T_&... remaining_data) const noexcept
-  {
-    _backend::_serialization_implementation(data);
-    serialization(remaining_data...);
+    return srz::deserialize(data_, size_, *this);
   }
 
   template<typename T, typename... T_>
-  void Serializable::deserialization(T& data, T_&... remaining_data) noexcept
+  void Serializable::serialization(const T& data_, const T_&... remaining_data_) const noexcept
   {
-    _backend::_deserialization_implementation(data);
-    deserialization(remaining_data...);
+    _impl::_serialization_implementation(data_);
+    serialization(remaining_data_...);
+  }
+
+  template<typename T, typename... T_>
+  void Serializable::deserialization(T& data_, T_&... remaining_data_) noexcept
+  {
+    _impl::_deserialization_implementation(data_);
+    deserialization(remaining_data_...);
   }
 //----------------------------------------------------------------------------------------------------------------------
-# undef  SEIRIAKOS_SEQUENCE
-# define SEIRIAKOS_SEQUENCE(...)                            \
+# undef  SRZ_SERIALIZATION_SEQUENCE
+# define SRZ_SERIALIZATION_SEQUENCE(...)                    \
     private:                                                \
       void serialization_sequence() const noexcept override \
       {                                                     \
@@ -1147,13 +1249,13 @@ namespace Seiriakos
         deserialization(__VA_ARGS__);                       \
       }
 //----------------------------------------------------------------------------------------------------------------------
-  const char* bytes_as_cstring(const uint8_t data[], const size_t size)
+  auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*
   {
     _srz_impl_THREADLOCAL static std::vector<char> buffer;
-    
+
     if (data == nullptr)
     {
-      _srz_impl_LOG("data is nullptr");
+      _srz_impl_DEBUGGING("data is nullptr");
       return nullptr;
     }
 
@@ -1183,16 +1285,19 @@ namespace Seiriakos
 }
 #undef _srz_impl_PRAGMA
 #undef _srz_impl_IGNORE
-#undef _srz_impl_THREADSAFE
 #undef _srz_impl_THREADLOCAL
 #undef _srz_impl_ATOMIC
 #undef _srz_impl_DECLARE_MUTEX
 #undef _srz_impl_DECLARE_LOCK
-#undef _srz_impl_HOT
-#undef _srz_impl_COLD
+#undef _srz_impl_LIKELY
+#undef _srz_impl_UNLIKELY
+#undef _srz_impl_EXPECTED
+#undef _srz_impl_ABNORMAL
 #undef _srz_impl_NODISCARD
 #undef _srz_impl_MAYBE_UNUSED
 #undef _srz_impl_NODISCARD_REASON
-#undef _srz_impl_ILOG
-#undef _srz_impl_LOG
+#undef _srz_impl_IDEBUGGING
+#undef _srz_impl_DEBUGGING
+#undef _srz_impl_CONSTEXPR_CPP14
+#undef _srz_impl_CONSTEXPR_CPP17
 #endif
