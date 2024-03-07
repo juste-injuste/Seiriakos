@@ -1,4 +1,6 @@
 // #define SRZ_DEBUGGING
+#define SRZ_UNSAFE
+#define SRZ_NOT_THREADSAFE
 #include "Seiriakos.hpp"
 #include "../include/Chronometro.hpp"
 #include <iostream>
