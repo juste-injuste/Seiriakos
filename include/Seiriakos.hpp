@@ -316,6 +316,14 @@ namespace srz
 #   define _srz_impl_DEBUGGING(...)  void(0)
 # endif
 
+# if defined(SRZ_UNSAFE)
+#   define _srz_impl_SAFE(...)   
+#   define _srz_impl_UNSAFE(...) __VA_ARGS__
+# else
+#   define _srz_impl_SAFE(...)   __VA_ARGS__
+#   define _srz_impl_UNSAFE(...)
+#endif
+
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
 
@@ -335,17 +343,19 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N);
 
-      if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
-      {
-        _info = Info::EMPTY_BUFFER;
-        return;
-      }
+      _srz_impl_SAFE(
+        if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
+        {
+          _info = Info::EMPTY_BUFFER;
+          return;
+        }
 
-      if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N))
-      {
-        _info =  Info::MISSING_BYTES;
-        return;
-      }
+        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N))
+        {
+          _info =  Info::MISSING_BYTES;
+          return;
+        }
+      )
 
       // set data's bytes one by one from the front of the buffer
       auto data_ptr   = reinterpret_cast<uint8_t*>(&data);
@@ -378,19 +388,23 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("size_t");
 
-      if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
-      {
-        _info = Info::EMPTY_BUFFER;
-        return;
-      }
+      _srz_impl_SAFE(
+        if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
+        {
+          _info = Info::EMPTY_BUFFER;
+          return;
+        }
+      )
 
       uint8_t bytes_used = _buffer[_front_of_buffer++];
 
-      if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
-      {
-        _info = Info::MISSING_BYTES;
-        return;
-      }
+      _srz_impl_SAFE(
+        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
+        {
+          _info = Info::MISSING_BYTES;
+          return;
+        }
+      )
 
       size = 0;
       for (size_t k = 0; bytes_used--; k += 8)
@@ -1196,17 +1210,21 @@ namespace srz
 
     _impl::_buffer.assign(data_, data_ + size_);
     _impl::_front_of_buffer = 0;
-    _impl::_info            = Info::ALL_GOOD;
+    _srz_impl_SAFE(
+      _impl::_info = Info::ALL_GOOD;
+    )
 
     _impl::_deserialize_things(things_...);
 
-    if _srz_impl_EXPECTED(_impl::_info == Info::ALL_GOOD)
-    {
-      if _srz_impl_ABNORMAL(_impl::_front_of_buffer != _impl::_buffer.size())
+    _srz_impl_SAFE(
+      if _srz_impl_EXPECTED(_impl::_info == Info::ALL_GOOD)
       {
-        _impl::_info = Info::SEQUENCE_MISMATCH;
+        if _srz_impl_ABNORMAL(_impl::_front_of_buffer != _impl::_buffer.size())
+        {
+          _impl::_info = Info::SEQUENCE_MISMATCH;
+        }
       }
-    }
+    )
 
     _srz_impl_DEBUGGING("----------------------------");
 
