@@ -40,7 +40,6 @@ TODO:
   std::ratio
   std::chrono::duration
   std::regex
-  std::atomic
 
   std::system_error
   std::hash ?? idk, im not sure about how it works
@@ -91,6 +90,7 @@ deserialize objects.
 #include <unordered_set>  // for std::unordered_set, std::unordered_multiset
 #include <set>            // for std::set, std::multiset
 #include <tuple>          // for std::tuple
+#include <atomic>         // for std::atomic
 //
 
 // things that make no sens i think
@@ -480,6 +480,14 @@ namespace srz
     void _deserialization_implementation(std::complex<T>& complex);
 
     template<typename T>
+    constexpr
+    void _serialization_implementation(const std::atomic<T>& atomic);
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::atomic<T>& atomic);
+
+    template<typename T>
     _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::basic_string<T>& string);
 
@@ -702,6 +710,26 @@ namespace srz
 
       _deserialization_implementation(complex.real);
       _deserialization_implementation(complex.imag);
+    }
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::atomic<T>& atomic_)
+    {
+      _srz_impl_IDEBUGGING("std::atomic<%s>", _underlying_name<T>());
+
+      _serialization_implementation(static_cast<const T>(atomic_));
+    }
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::atomic<T>& atomic_)
+    {
+      _srz_impl_IDEBUGGING("std::atomic<%s>", _underlying_name<T>());
+      
+      T value = {};
+      _deserialization_implementation(value);
+      atomic_ = value;
     }
 
     template<typename T>
