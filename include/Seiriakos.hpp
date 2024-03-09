@@ -32,7 +32,6 @@ SOFTWARE.
 TODO:
   std::type_index
   std::valarray
-  std::bitset
   std::queue
   std::priority_queue
   std::forward_list
@@ -53,6 +52,10 @@ TODO:
 
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
 deserialize objects.
+
+-----disclosure-------------------------------------------------------------------------------------
+
+std::bitset is assumed to be contiguous.
 
 -----inclusion guard------------------------------------------------------------------------------*/
 #ifndef _seiriakos_hpp
@@ -90,6 +93,7 @@ deserialize objects.
 #include <unordered_set>  // for std::unordered_set, std::unordered_multiset
 #include <set>            // for std::set, std::multiset
 #include <tuple>          // for std::tuple
+#include <bitset>         // for std::bitset
 #include <atomic>         // for std::atomic
 //
 
@@ -517,6 +521,14 @@ namespace srz
     inline
     void _deserialization_implementation(std::vector<bool>& vector);
 
+    template<size_t N>
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::bitset<N>& bitset);
+
+    template<size_t N>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::bitset<N>& bitset);
+
     template<typename T>
     constexpr
     void _serialization_implementation(const std::list<T>& list);
@@ -887,6 +899,24 @@ namespace srz
         _deserialization_implementation(value);
         vector_.push_back(value);
       }
+    }
+
+    template<size_t N>
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::bitset<N>& bitset_)
+    {
+      _srz_impl_IDEBUGGING("std::bitset<%zu>", N);
+      
+      _serialization_implementation(bitset_, 1);
+    }
+
+    template<size_t N>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::bitset<N>& bitset_)
+    {
+      _srz_impl_IDEBUGGING("std::bitset<%zu>", N);
+
+      _deserialization_implementation(bitset_, 1);
     }
 
     template<typename T>
