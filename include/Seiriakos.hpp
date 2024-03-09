@@ -74,25 +74,25 @@ std::bitset is assumed to be contiguous.
 #endif
 //-------------------
 
-#include <array>          // for std::array
-#include <complex>        // for std::complex
-#include <list>           // for std::list
-#include <deque>          // for std::deque
-#include <string>         // for std::basic_string
-#include <utility>        // for std::pair
-#include <unordered_map>  // for std::unordered_map, std::unordered_multimap
-#include <map>            // for std::map, std::multimap
-#include <unordered_set>  // for std::unordered_set, std::unordered_multiset
-#include <set>            // for std::set, std::multiset
-#include <tuple>          // for std::tuple
-#include <valarray>       // for std::valarray
-#include <bitset>         // for std::bitset
-#include <atomic>         // for std::atomic
-#include <ratio>          // for std::ratio, intmax_t
-#include <chrono>         // for std::chrono::duration
-#include <stack>          // for std::stack
-#include <forward_list>   // for std::forward_list
-#include <queue>          // for std::queue
+#include <array>         // for std::array
+#include <complex>       // for std::complex
+#include <list>          // for std::list
+#include <deque>         // for std::deque
+#include <string>        // for std::basic_string
+#include <utility>       // for std::pair
+#include <unordered_map> // for std::unordered_map, std::unordered_multimap
+#include <map>           // for std::map, std::multimap
+#include <unordered_set> // for std::unordered_set, std::unordered_multiset
+#include <set>           // for std::set, std::multiset
+#include <tuple>         // for std::tuple
+#include <valarray>      // for std::valarray
+#include <bitset>        // for std::bitset
+#include <atomic>        // for std::atomic
+#include <ratio>         // for std::ratio, intmax_t
+#include <chrono>        // for std::chrono::duration
+#include <stack>         // for std::stack
+#include <forward_list>  // for std::forward_list
+#include <queue>         // for std::queue
 //
 
 // things that make no sens i think

@@ -90,9 +90,6 @@ loop:
   CHZ_LOOP_FOR(100000)
   decoded.deserialize(serialized.data(), serialized.size());
 
-  std::priority_queue<int> pq;
-  srz::_impl::_serialization_implementation(pq);
-
   // std::cout << "a:   " << decoded.a.data() << '\n';
   // std::cout << "b:   " << decoded.b << '\n';
   // std::cout << "c:   " << decoded.c.a << '\n';
