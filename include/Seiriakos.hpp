@@ -31,7 +31,6 @@ SOFTWARE.
 -----versions---------------------------------------------------------------------------------------
 TODO:
   std::type_index
-  std::priority_queue
   std::regex
 
   std::system_error
@@ -584,6 +583,14 @@ namespace srz
     template<typename T>
     constexpr
     void _deserialization_implementation(std::queue<T>& queue);
+
+    template<typename T, class C, class F>
+    constexpr
+    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue);
+
+    template<typename T, class C, class F>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue);
 
     template<typename T>
     constexpr
@@ -1189,6 +1196,72 @@ namespace srz
       {
         _deserialization_implementation(value);
         queue_.push(std::move(value));
+      }
+    }
+
+    template<typename T, class C, class F>
+    constexpr
+    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue_)
+    {
+      _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
+
+      std::priority_queue<T, C, F> temp = priority_queue_;
+
+      const auto size = priority_queue_.size();
+
+      _size_t_serialization_implementation(size);
+
+      for (size_t k = size; k; --k)
+      {
+        _serialization_implementation(temp.top());
+        temp.pop();
+      }
+    }
+
+    template<typename T, class C, class F>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue_)
+    {
+      _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
+      
+      size_t size = 0;
+      // I don't know why, but I had to inline the size_t deserialization manually
+      // to suppress some erronous warning by GCC at -O3 with -Wstrict-overflow
+#   if defined(SRZ_FIXED_LENGHT)
+      _deserialization_implementation(size);
+#   else
+      {_srz_impl_IDEBUGGING("size_t");}
+      _srz_impl_SAFE(
+        if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
+        {
+          _info = Info::EMPTY_BUFFER;
+          return;
+        }
+      )
+
+      uint8_t bytes_used = _buffer[_front_of_buffer++];
+
+      _srz_impl_SAFE(
+        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
+        {
+          _info = Info::MISSING_BYTES;
+          return;
+        }
+      )
+
+      for (size_t k = 0; bytes_used; k += 8, --bytes_used)
+      {
+        size |= (_buffer[_front_of_buffer++] << k);
+      }
+#   endif
+
+      priority_queue_ = std::priority_queue<T, C, F>();
+
+      T value = {};
+      for (size_t k = size; k; --k)
+      {
+        _deserialization_implementation(value);
+        priority_queue_.push(std::move(value));
       }
     }
 
