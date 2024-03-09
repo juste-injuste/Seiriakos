@@ -30,7 +30,6 @@ SOFTWARE.
 
 -----versions---------------------------------------------------------------------------------------
 TODO:
-  std::type_index
   std::regex
 
   std::system_error
@@ -411,6 +410,12 @@ namespace srz
 
       _front_of_buffer += sizeof(T) * N_;
     }
+
+    template<typename T>
+    void _serialization_implementation(const T* const data_) = delete;
+
+    template<typename T>
+    void _deserialization_implementation(T* const data_) = delete;
 
     _srz_impl_MAYBE_UNUSED
     static
