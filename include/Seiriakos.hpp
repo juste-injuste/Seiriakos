@@ -31,7 +31,6 @@ SOFTWARE.
 -----versions---------------------------------------------------------------------------------------
 TODO:
   std::type_index
-  std::valarray
   std::queue
   std::priority_queue
   std::forward_list
@@ -93,6 +92,7 @@ std::bitset is assumed to be contiguous.
 #include <unordered_set>  // for std::unordered_set, std::unordered_multiset
 #include <set>            // for std::set, std::multiset
 #include <tuple>          // for std::tuple
+#include <valarray>       // for std::valarray
 #include <bitset>         // for std::bitset
 #include <atomic>         // for std::atomic
 //
@@ -521,6 +521,14 @@ namespace srz
     inline
     void _deserialization_implementation(std::vector<bool>& vector);
 
+    template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::valarray<T>& valarray);
+
+    template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::valarray<T>& valarray);
+
     template<size_t N>
     _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::bitset<N>& bitset);
@@ -898,6 +906,51 @@ namespace srz
       {
         _deserialization_implementation(value);
         vector_.push_back(value);
+      }
+    }
+
+    template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
+    void _serialization_implementation(const std::valarray<T>& valarray_)
+    {
+      _srz_impl_IDEBUGGING("std::valarray<%s>", _underlying_name<T>());
+
+      _size_t_serialization_implementation(valarray_.size());
+
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
+      {
+        _serialization_implementation(valarray_[0], valarray_.size());
+      }
+      else
+      {
+        for (const auto& value : valarray_)
+        {
+          _serialization_implementation(value);
+        }
+      }
+    }
+
+    template<typename T>
+    _srz_impl_CONSTEXPR_CPP14
+    void _deserialization_implementation(std::valarray<T>& valarray_)
+    {
+      _srz_impl_IDEBUGGING("std::valarray<%s>", _underlying_name<T>());
+
+      size_t size = {};
+      _size_t_deserialization_implementation(size);
+
+      valarray_.resize(size);
+
+      if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
+      {
+        _deserialization_implementation(valarray_[0], size);
+      }
+      else
+      {
+        for (auto& value : valarray_)
+        {
+          _deserialization_implementation(value);
+        }
       }
     }
 
