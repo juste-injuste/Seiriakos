@@ -30,7 +30,6 @@ SOFTWARE.
 
 -----versions---------------------------------------------------------------------------------------
 TODO:
-  std::vector<bool>
   std::type_index
   std::valarray
   std::bitset
@@ -504,6 +503,12 @@ namespace srz
     _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(std::vector<T>& vector);
 
+    inline
+    void _serialization_implementation(const std::vector<bool>& vector);
+    
+    inline
+    void _deserialization_implementation(std::vector<bool>& vector);
+
     template<typename T>
     constexpr
     void _serialization_implementation(const std::list<T>& list);
@@ -824,6 +829,35 @@ namespace srz
         {
           _deserialization_implementation(value);
         }
+      }
+    }
+
+    void _serialization_implementation(const std::vector<bool>& vector_)
+    {
+      _srz_impl_IDEBUGGING("std::vector<bool>");
+
+      _size_t_serialization_implementation(vector_.size());
+
+      for (const bool value : vector_)
+      {
+        _serialization_implementation(value);
+      }
+    }
+
+    void _deserialization_implementation(std::vector<bool>& vector_)
+    {
+      _srz_impl_IDEBUGGING("std::vector<bool>");
+
+      size_t size = {};
+      _size_t_deserialization_implementation(size);
+
+      vector_.resize(size);
+
+      bool value = {};
+      for (size_t k = 0; k < size; ++k)
+      {
+        _deserialization_implementation(value);
+        vector_.push_back(value);
       }
     }
 
