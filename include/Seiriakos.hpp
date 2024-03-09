@@ -186,13 +186,19 @@ namespace srz
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
-# if defined(__clang__)
 #   define _srz_impl_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
+# if defined(__clang__)
 #   define _srz_impl_CLANG_IGNORE(WARNING, ...)          \
       _srz_impl_PRAGMA(clang diagnostic push)            \
       _srz_impl_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
       _srz_impl_PRAGMA(clang diagnostic pop)
+# elif defined(__GNUC__)
+#   define _srz_impl_GCC_IGNORE(WARNING, ...)          \
+      _srz_impl_PRAGMA(GCC diagnostic push)            \
+      _srz_impl_PRAGMA(GCC diagnostic ignored WARNING) \
+      __VA_ARGS__                                      \
+      _srz_impl_PRAGMA(GCC diagnostic pop)
 #endif
 
 // support from clang 12.0.0 and GCC 10.1 onward
@@ -288,16 +294,16 @@ namespace srz
       {
         if (std::is_unsigned<T>::value)
         {
-          std::sprintf(_underlying_name_buffer, "uint%u", unsigned(sizeof(T) * 8));
+          std::sprintf(_underlying_name_buffer, "uint%zu", sizeof(T) * 8);
         }
         else
         {
-          std::sprintf(_underlying_name_buffer, "int%u", unsigned(sizeof(T) * 8));
+          std::sprintf(_underlying_name_buffer, "int%zu", sizeof(T) * 8);
         }
       }
       else if (std::is_floating_point<T>::value)
       {
-        std::sprintf(_underlying_name_buffer, "float%u", unsigned(sizeof(T) * 8));
+        std::sprintf(_underlying_name_buffer, "float%zu", sizeof(T) * 8);
       }
       else
       {
@@ -313,7 +319,7 @@ namespace srz
     }
 
     _srz_impl_DECLARE_MUTEX(_dbg_mtx);
-    _srz_impl_MAYBE_UNUSED static _srz_impl_THREADLOCAL char _dbg_buffer[256] = {};
+    _srz_impl_MAYBE_UNUSED static _srz_impl_THREADLOCAL char _dbg_buf[256] = {};
 
     class _indentdebug
     {
@@ -322,16 +328,16 @@ namespace srz
       _srz_impl_CONSTEXPR_CPP14
       _indentdebug(T... arguments) noexcept
       {
-        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);
+        _srz_impl_DECLARE_LOCK(_dbg_mtx);
 
-        for (unsigned k = _depth()++; k--;)
+        for (unsigned k = _depth()++; k; --k)
         {
           _io::dbg << "  ";
         }
 
-        std::sprintf(_dbg_buffer, arguments...);
+        std::sprintf(_dbg_buf, arguments...);
 
-        _io::dbg << _dbg_buffer << std::endl;
+        _io::dbg << _dbg_buf << std::endl;
       }
 
       ~_indentdebug() noexcept { --_depth(); }
@@ -344,11 +350,11 @@ namespace srz
     };
 
 #   define _srz_impl_IDEBUGGING(...) _impl::_indentdebug _idbg(__VA_ARGS__)
-#   define _srz_impl_DEBUGGING(...)                                    \
-      [&](const char* const caller){                                   \
-        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);                       \
-        std::sprintf(_impl::_dbg_buffer, __VA_ARGS__);                 \
-        _io::dbg << caller << ": " << _impl::_dbg_buffer << std::endl; \
+#   define _srz_impl_DEBUGGING(...)                                 \
+      [&](const char* const caller){                                \
+        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);                    \
+        std::sprintf(_impl::_dbg_buf, __VA_ARGS__);                 \
+        _io::dbg << caller << ": " << _impl::_dbg_buf << std::endl; \
       }(__func__)
 # else
 #   define _srz_impl_IDEBUGGING(...) void(0)
@@ -406,7 +412,7 @@ namespace srz
 
     _srz_impl_MAYBE_UNUSED
     static
-    void size_t_serialization_implementation(size_t size_)
+    void _size_t_serialization_implementation(size_t size_)
     {
 #   if defined(SRZ_FIXED_LENGHT)
       _serialization_implementation(size_);
@@ -427,7 +433,7 @@ namespace srz
 
     _srz_impl_MAYBE_UNUSED
     static
-    void size_t_deserialization_implementation(size_t& size_)
+    void _size_t_deserialization_implementation(size_t& size_)
     {
 #   if defined(SRZ_FIXED_LENGHT)
       _deserialization_implementation(size_);
@@ -453,8 +459,8 @@ namespace srz
       )
 
       size_ = 0;
-      for (size_t k = 0; bytes_used--; k += 8)
       {
+      for (size_t k = 0; bytes_used; k += 8, --bytes_used)
         size_ |= (_buffer[_front_of_buffer++] << k);
       }
 #   endif
@@ -699,7 +705,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(string_.size());
+      _size_t_serialization_implementation(string_.size());
 
       if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
@@ -721,7 +727,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       string_.resize(size);
 
@@ -742,7 +748,7 @@ namespace srz
     _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::array<T, N>& array_)
     {
-      _srz_impl_IDEBUGGING("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
+      _srz_impl_IDEBUGGING("std::array<%s, %zu>", _underlying_name<T>(), N);
 
       if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
@@ -761,7 +767,7 @@ namespace srz
     _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(std::array<T, N>& array_)
     {
-      _srz_impl_IDEBUGGING("std::array<%s, %u>", _underlying_name<T>(), unsigned(N));
+      _srz_impl_IDEBUGGING("std::array<%s, %zu>", _underlying_name<T>(), N);
 
       if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
@@ -782,7 +788,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(vector_.size());
+      _size_t_serialization_implementation(vector_.size());
 
       if _srz_impl_CONSTEXPR_CPP17 _srz_impl_EXPECTED(std::is_fundamental<T>::value)
       {
@@ -804,7 +810,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       vector_.resize(size);
 
@@ -827,7 +833,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(list_.size());
+      _size_t_serialization_implementation(list_.size());
 
       for (const auto& value : list_)
       {
@@ -842,7 +848,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       list_.resize(size);
       for (auto& value : list_)
@@ -857,7 +863,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
-      size_t_serialization_implementation(deque_.size());
+      _size_t_serialization_implementation(deque_.size());
 
       for (const auto& value : deque_)
       {
@@ -872,7 +878,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       deque_.resize(size);
       for (auto& value : deque_)
@@ -907,7 +913,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::unordered_map");
 
-      size_t_serialization_implementation(unordered_map_.size());
+      _size_t_serialization_implementation(unordered_map_.size());
 
       for (const auto& key_value : unordered_map_)
       {
@@ -922,7 +928,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::unordered_map");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       unordered_map_.clear();
       unordered_map_.reserve(size);
@@ -941,7 +947,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::unordered_multimap");
 
-      size_t_serialization_implementation(unordered_multimap_.size());
+      _size_t_serialization_implementation(unordered_multimap_.size());
 
       for (const auto& key_value : unordered_multimap_)
       {
@@ -956,7 +962,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::unordered_multimap");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       unordered_multimap_.clear();
       unordered_multimap_.reserve(size);
@@ -975,7 +981,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::map");
 
-      size_t_serialization_implementation(map_.size());
+      _size_t_serialization_implementation(map_.size());
 
       for (const auto& key_value : map_)
       {
@@ -990,7 +996,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::map");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       map_.clear();
 
@@ -1008,7 +1014,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::multimap");
 
-      size_t_serialization_implementation(multimap_.size());
+      _size_t_serialization_implementation(multimap_.size());
 
       for (const auto& key_value : multimap_)
       {
@@ -1023,7 +1029,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::multimap");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       multimap_.clear();
 
@@ -1041,7 +1047,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::unordered_set");
 
-      size_t_serialization_implementation(unordered_set_.size());
+      _size_t_serialization_implementation(unordered_set_.size());
 
       for (const auto& key : unordered_set_)
       {
@@ -1056,7 +1062,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::unordered_set");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       unordered_set_.clear();
       unordered_set_.reserve(size);
@@ -1075,7 +1081,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::unordered_multiset");
 
-      size_t_serialization_implementation(unordered_multiset_.size());
+      _size_t_serialization_implementation(unordered_multiset_.size());
 
       for (const auto& key : unordered_multiset_)
       {
@@ -1090,7 +1096,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::unordered_multiset");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       unordered_multiset_.clear();
       unordered_multiset_.reserve(size);
@@ -1109,7 +1115,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::set");
 
-      size_t_serialization_implementation(set_.size());
+      _size_t_serialization_implementation(set_.size());
 
       for (const auto& key : set_)
       {
@@ -1124,7 +1130,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::set");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       set_.clear();
 
@@ -1142,7 +1148,7 @@ namespace srz
     {
       _srz_impl_IDEBUGGING("std::multiset");
 
-      size_t_serialization_implementation(multiset_.size());
+      _size_t_serialization_implementation(multiset_.size());
 
       for (const auto& key : multiset_)
       {
@@ -1157,7 +1163,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::multiset");
 
       size_t size = {};
-      size_t_deserialization_implementation(size);
+      _size_t_deserialization_implementation(size);
 
       multiset_.clear();
 
@@ -1282,7 +1288,7 @@ namespace srz
     return srz::serialize(*this);
   }
 
-  Info Serializable::deserialize(const uint8_t data_[], size_t size_) noexcept
+  Info Serializable::deserialize(const uint8_t data_[], const size_t size_) noexcept
   {
     return srz::deserialize(data_, size_, *this);
   }
