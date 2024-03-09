@@ -31,7 +31,6 @@ SOFTWARE.
 -----versions---------------------------------------------------------------------------------------
 TODO:
   std::type_index
-  std::queue
   std::priority_queue
   std::regex
 
@@ -95,6 +94,7 @@ std::bitset is assumed to be contiguous.
 #include <chrono>         // for std::chrono::duration
 #include <stack>          // for std::stack
 #include <forward_list>   // for std::forward_list
+#include <queue>          // for std::queue
 //
 
 // things that make no sens i think
@@ -576,6 +576,14 @@ namespace srz
     template<typename T>
     constexpr
     void _deserialization_implementation(std::forward_list<T>& forward_list);
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::queue<T>& queue);
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::queue<T>& queue);
 
     template<typename T>
     constexpr
@@ -1144,6 +1152,43 @@ namespace srz
       for (auto& value : forward_list_)
       {
         _deserialization_implementation(value);
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::queue<T>& queue_)
+    {
+      _srz_impl_IDEBUGGING("std::queue<%s>", _underlying_name<T>());
+
+      std::queue<T> temp = queue_;
+
+      const auto size = queue_.size();
+      _size_t_serialization_implementation(size);
+
+      for (size_t k = size; k; --k)
+      {
+        _serialization_implementation(temp.front());
+        temp.pop();
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::queue<T>& queue_)
+    {
+      _srz_impl_IDEBUGGING("std::queue<%s>", _underlying_name<T>());
+
+      size_t size = {};
+      _size_t_deserialization_implementation(size);
+
+      queue_ = std::queue<T>();
+
+      T value = {};
+      for (size_t k = size; k; --k)
+      {
+        _deserialization_implementation(value);
+        queue_.push(std::move(value));
       }
     }
 
