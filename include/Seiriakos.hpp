@@ -33,7 +33,6 @@ TODO:
   std::type_index
   std::queue
   std::priority_queue
-  std::forward_list
   std::stack
   std::ratio
   std::chrono::duration
@@ -95,6 +94,7 @@ std::bitset is assumed to be contiguous.
 #include <valarray>       // for std::valarray
 #include <bitset>         // for std::bitset
 #include <atomic>         // for std::atomic
+#include <forward_list>   // for std::forward_list
 //
 
 // things that make no sens i think
@@ -544,6 +544,14 @@ namespace srz
     template<typename T>
     constexpr
     void _deserialization_implementation(std::list<T>& list);
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::forward_list<T>& forward_list);
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::forward_list<T>& forward_list);
 
     template<typename T>
     constexpr
@@ -997,6 +1005,41 @@ namespace srz
 
       list_.resize(size);
       for (auto& value : list_)
+      {
+        _deserialization_implementation(value);
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::forward_list<T>& forward_list_)
+    {
+      _srz_impl_IDEBUGGING("std::forward_list<%s>", _underlying_name<T>());
+
+      size_t size = 0;
+      for (auto iterator = forward_list_.begin(), end = forward_list_.end(); iterator != end; ++iterator)
+      {
+        ++size;
+      }
+      _size_t_serialization_implementation(size);
+
+      for (const auto& value : forward_list_)
+      {
+        _serialization_implementation(value);
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::forward_list<T>& forward_list_)
+    {
+      _srz_impl_IDEBUGGING("std::forward_list<%s>", _underlying_name<T>());
+
+      size_t size = {};
+      _size_t_deserialization_implementation(size);
+
+      forward_list_.resize(size);
+      for (auto& value : forward_list_)
       {
         _deserialization_implementation(value);
       }
