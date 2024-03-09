@@ -33,7 +33,6 @@ TODO:
   std::type_index
   std::queue
   std::priority_queue
-  std::ratio
   std::regex
 
   std::system_error
@@ -92,6 +91,7 @@ std::bitset is assumed to be contiguous.
 #include <valarray>       // for std::valarray
 #include <bitset>         // for std::bitset
 #include <atomic>         // for std::atomic
+#include <ratio>          // for std::ratio, intmax_t
 #include <chrono>         // for std::chrono::duration
 #include <stack>          // for std::stack
 #include <forward_list>   // for std::forward_list
@@ -491,6 +491,14 @@ namespace srz
     constexpr
     void _deserialization_implementation(std::atomic<T>& atomic);
 
+    template<intmax_t N, intmax_t D>
+    constexpr
+    void _serialization_implementation(const std::ratio<N, D>);
+
+    template<intmax_t N, intmax_t D>
+    constexpr
+    void _deserialization_implementation(std::ratio<N, D>&);
+
     template<class R, class P>
     constexpr
     void _serialization_implementation(const std::chrono::duration<R, P> duration);
@@ -774,6 +782,20 @@ namespace srz
       T value = {};
       _deserialization_implementation(value);
       atomic_ = value;
+    }
+
+    template<intmax_t N, intmax_t D>
+    constexpr
+    void _serialization_implementation(const std::ratio<N, D>)
+    {
+      _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
+    }
+
+    template<intmax_t N, intmax_t D>
+    constexpr
+    void _deserialization_implementation(std::ratio<N, D>&)
+    {
+      _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
     }
 
     template<class R, class P>
