@@ -33,7 +33,6 @@ TODO:
   std::type_index
   std::queue
   std::priority_queue
-  std::stack
   std::ratio
   std::chrono::duration
   std::regex
@@ -94,6 +93,7 @@ std::bitset is assumed to be contiguous.
 #include <valarray>       // for std::valarray
 #include <bitset>         // for std::bitset
 #include <atomic>         // for std::atomic
+#include <stack>          // for std::stack
 #include <forward_list>   // for std::forward_list
 //
 
@@ -544,6 +544,14 @@ namespace srz
     template<typename T>
     constexpr
     void _deserialization_implementation(std::list<T>& list);
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::stack<T>& stack);
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::stack<T>& stack);
 
     template<typename T>
     constexpr
@@ -1007,6 +1015,50 @@ namespace srz
       for (auto& value : list_)
       {
         _deserialization_implementation(value);
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _serialization_implementation(const std::stack<T>& stack_)
+    {
+      _srz_impl_IDEBUGGING("std::stack<%s>", _underlying_name<T>());
+
+      std::stack<T> temp = stack_;
+
+      const auto size = stack_.size();
+      _size_t_serialization_implementation(size);
+
+      for (size_t k = size; k; --k)
+      {
+        _serialization_implementation(temp.top());
+        temp.pop();
+      }
+    }
+
+    template<typename T>
+    constexpr
+    void _deserialization_implementation(std::stack<T>& stack_)
+    {
+      _srz_impl_IDEBUGGING("std::stack<%s>", _underlying_name<T>());
+
+      size_t size = {};
+      _size_t_deserialization_implementation(size);
+
+      std::stack<T> temp;
+
+      T value = {};
+      for (size_t k = size; k; --k)
+      {
+        _deserialization_implementation(value);
+        temp.push(std::move(value));
+      }
+
+      stack_ = std::stack<T>();
+      for (size_t k = size; k; --k)
+      {
+        stack_.push(std::move(temp.top()));
+        temp.pop();
       }
     }
 
