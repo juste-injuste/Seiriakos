@@ -32,9 +32,8 @@ struct Something final : public srz::Serializable
   std::stack<int> k;
   std::queue<int> l;
   std::forward_list<int> m;
-  std::priority_queue<std::string> n;
 
-  SRZ_SERIALIZATION_SEQUENCE(a, b, c, d, e, f, g, h, i, j, k, l, m, n);
+  SRZ_SERIALIZATION_SEQUENCE(a, b, c, d, e, f, g, h, i, j, k, l, m);
 };
 
 int main()

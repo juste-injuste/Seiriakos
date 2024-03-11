@@ -42,12 +42,15 @@ TODO:
   std::ios ??
 -----description------------------------------------------------------------------------------------
 
-Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize and
-deserialize objects.
+Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize
+and deserialize objects.
 
 -----disclosure-------------------------------------------------------------------------------------
 
 std::bitset is assumed to be contiguous.
+
+std::priority_queue potentially triggers '-Wstrict-overflow' if compiling with GCC >= 9.1
+with -Wstrict-overflow=3 and above.
 
 -----inclusion guard------------------------------------------------------------------------------*/
 #ifndef _seiriakos_hpp
@@ -235,16 +238,19 @@ namespace srz
 #   define _srz_impl_MAYBE_UNUSED        __attribute__((unused))
 #   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
 #   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
+#   define _ltz_impl_RESTRICT            __restrict__
 # elif defined(__GNUC__)
 #   define _srz_impl_NODISCARD           __attribute__((warn_unused_result))
 #   define _srz_impl_MAYBE_UNUSED        __attribute__((unused))
 #   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
 #   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
+#   define _ltz_impl_RESTRICT            __restrict__
 # else
 #   define _srz_impl_NODISCARD
 #   define _srz_impl_MAYBE_UNUSED
 #   define _srz_impl_EXPECTED(CONDITION) (CONDITION) _srz_impl_LIKELY
 #   define _srz_impl_ABNORMAL(CONDITION) (CONDITION) _srz_impl_UNLIKELY
+#   define _ltz_impl_RESTRICT
 # endif
 
 // support from clang 10.0.0 and GCC 10.1 onward
@@ -1218,7 +1224,7 @@ namespace srz
 
       const auto size = priority_queue_.size();
 
-      // _size_t_serialization_implementation(size);
+      _size_t_serialization_implementation(size);
 
       for (size_t k = size; k; --k)
       {
@@ -1234,35 +1240,7 @@ namespace srz
       _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
       
       size_t size = 0;
-      // I don't know why, but I had to inline the size_t deserialization manually
-      // to suppress some erronous warning by GCC at -O3 with -Wstrict-overflow
-#   if defined(SRZ_FIXED_LENGHT)
-      _deserialization_implementation(size);
-#   else
-      {_srz_impl_IDEBUGGING("size_t");}
-      _srz_impl_SAFE(
-        if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
-        {
-          _info = Info::EMPTY_BUFFER;
-          return;
-        }
-      )
-
-      uint8_t bytes_used = _buffer[_front_of_buffer++];
-
-      _srz_impl_SAFE(
-        if _srz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
-        {
-          _info = Info::MISSING_BYTES;
-          return;
-        }
-      )
-
-      for (size_t k = 0; bytes_used; k += 8, --bytes_used)
-      {
-        size |= (_buffer[_front_of_buffer++] << k);
-      }
-#   endif
+      _size_t_deserialization_implementation(size);
 
       priority_queue_ = std::priority_queue<T, C, F>();
 
