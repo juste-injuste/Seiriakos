@@ -387,9 +387,9 @@ namespace srz
     constexpr
     void _serialization_implementation(const T& data_, const size_t N_ = 1)
     {
-      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N_);
+      _srz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
 
-      const auto data_ptr = reinterpret_cast<const uint8_t*>(&data_);
+      const _ltz_impl_RESTRICT auto data_ptr = reinterpret_cast<const uint8_t*>(&data_);
       _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N_);
     }
 
@@ -397,7 +397,7 @@ namespace srz
     _srz_impl_CONSTEXPR_CPP14
     void _deserialization_implementation(T& data_, const size_t N_ = 1)
     {
-      _srz_impl_IDEBUGGING("%s x%u", _underlying_name<T>(),  N_);
+      _srz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
 
       _srz_impl_SAFE(
         if _srz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
@@ -429,7 +429,7 @@ namespace srz
 
     _srz_impl_MAYBE_UNUSED
     static
-    void _size_t_serialization_implementation(size_t size_)
+    void _size_t_serialization_implementation(const size_t size_)
     {
 #   if defined(SRZ_FIXED_LENGHT)
       _serialization_implementation(size_);
@@ -441,7 +441,7 @@ namespace srz
 
       _buffer.push_back(bytes_used);
 
-      for (size_t k = 0; bytes_used--; k += 8)
+      for (size_t k = 0; bytes_used; k += 8, --bytes_used)
       {
         _buffer.push_back(static_cast<uint8_t>((size_ >> k) & 0xFF));
       }
@@ -475,7 +475,7 @@ namespace srz
         }
       )
 
-      size_ = 0;
+      size_ = {};
       {
       for (size_t k = 0; bytes_used; k += 8, --bytes_used)
         size_ |= (_buffer[_front_of_buffer++] << k);
