@@ -177,8 +177,18 @@ namespace srz
       if (_code != Info::ALL_GOOD) _code = code;
     }
 
-    constexpr operator Code() const noexcept { return _code; }
-    constexpr const char* description() const { return "text"; }
+    constexpr
+    operator Code() const noexcept
+    {
+      return _code;
+    }
+    
+    constexpr
+    const char* description() const
+    {
+      return "text";
+    }
+    
     operator bool() const = delete;
 
   private:
@@ -221,26 +231,20 @@ namespace srz
 
 // support from clang 3.9.0 and GCC 4.7.3 onward
 # if defined(__clang__)
+#   define _srz_impl_NODISCARD           __attribute__((warn_unused_result))
+#   define _srz_impl_MAYBE_UNUSED        __attribute__((unused))
 #   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
 #   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
 # elif defined(__GNUC__)
+#   define _srz_impl_NODISCARD           __attribute__((warn_unused_result))
+#   define _srz_impl_MAYBE_UNUSED        __attribute__((unused))
 #   define _srz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _srz_impl_LIKELY
 #   define _srz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _srz_impl_UNLIKELY
-# else
-#   define _srz_impl_EXPECTED(CONDITION) (CONDITION) _srz_impl_LIKELY
-#   define _srz_impl_ABNORMAL(CONDITION) (CONDITION) _srz_impl_UNLIKELY
-# endif
-
-// support from clang 3.9.0 and GCC 5.1 onward
-# if defined(__clang__)
-#   define _srz_impl_NODISCARD    __attribute__((warn_unused_result))
-#   define _srz_impl_MAYBE_UNUSED __attribute__((unused))
-# elif defined(__GNUC__)
-#   define _srz_impl_NODISCARD    __attribute__((warn_unused_result))
-#   define _srz_impl_MAYBE_UNUSED __attribute__((unused))
 # else
 #   define _srz_impl_NODISCARD
 #   define _srz_impl_MAYBE_UNUSED
+#   define _srz_impl_EXPECTED(CONDITION) (CONDITION) _srz_impl_LIKELY
+#   define _srz_impl_ABNORMAL(CONDITION) (CONDITION) _srz_impl_UNLIKELY
 # endif
 
 // support from clang 10.0.0 and GCC 10.1 onward
@@ -327,7 +331,7 @@ namespace srz
     public:
       template<typename... T>
       _srz_impl_CONSTEXPR_CPP14
-      _indentdebug(T... arguments) noexcept
+      _indentdebug(T... arguments_) noexcept
       {
         _srz_impl_DECLARE_LOCK(_dbg_mtx);
 
@@ -336,7 +340,7 @@ namespace srz
           _io::dbg << "  ";
         }
 
-        std::sprintf(_dbg_buf, arguments...);
+        std::sprintf(_dbg_buf, arguments_...);
 
         _io::dbg << _dbg_buf << std::endl;
       }
@@ -351,11 +355,11 @@ namespace srz
     };
 
 #   define _srz_impl_IDEBUGGING(...) _impl::_indentdebug _idbg(__VA_ARGS__)
-#   define _srz_impl_DEBUGGING(...)                                 \
-      [&](const char* const caller){                                \
-        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);                    \
-        std::sprintf(_impl::_dbg_buf, __VA_ARGS__);                 \
-        _io::dbg << caller << ": " << _impl::_dbg_buf << std::endl; \
+#   define _srz_impl_DEBUGGING(...)                                  \
+      [&](const char* const caller_){                                \
+        _srz_impl_DECLARE_LOCK(_impl::_dbg_mtx);                     \
+        std::sprintf(_impl::_dbg_buf, __VA_ARGS__);                  \
+        _io::dbg << caller_ << ": " << _impl::_dbg_buf << std::endl; \
       }(__func__)
 # else
 #   define _srz_impl_IDEBUGGING(...) void(0)
@@ -1214,7 +1218,7 @@ namespace srz
 
       const auto size = priority_queue_.size();
 
-      _size_t_serialization_implementation(size);
+      // _size_t_serialization_implementation(size);
 
       for (size_t k = size; k; --k)
       {
