@@ -1718,7 +1718,7 @@ namespace srz
 
     if (data == nullptr)
     {
-      _srz_impl_DEBUGGING("data is nullptr");
+      _srz_impl_DEBUGGING("'data' is nullptr.");
       return nullptr;
     }
 
