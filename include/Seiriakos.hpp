@@ -484,246 +484,246 @@ namespace srz
     }
 
     inline
-    void _serialization_implementation(const Serializable& serializable);
+    void _serialization_implementation(const Serializable& serializable) noexcept;
 
     inline
-    void _deserialization_implementation(Serializable& serializable);
+    void _deserialization_implementation(Serializable& serializable) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::complex<T>& complex);
+    void _serialization_implementation(const std::complex<T>& complex) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::complex<T>& complex);
+    void _deserialization_implementation(std::complex<T>& complex) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::atomic<T>& atomic);
+    void _serialization_implementation(const std::atomic<T>& atomic) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::atomic<T>& atomic);
+    void _deserialization_implementation(std::atomic<T>& atomic) noexcept;
 
     template<intmax_t N, intmax_t D>
     constexpr
-    void _serialization_implementation(const std::ratio<N, D>);
+    void _serialization_implementation(const std::ratio<N, D>) noexcept;
 
     template<intmax_t N, intmax_t D>
     constexpr
-    void _deserialization_implementation(std::ratio<N, D>&);
+    void _deserialization_implementation(std::ratio<N, D>&) noexcept;
 
     template<class R, class P>
     constexpr
-    void _serialization_implementation(const std::chrono::duration<R, P> duration);
+    void _serialization_implementation(const std::chrono::duration<R, P> duration) noexcept;
 
     template<class R, class P>
     constexpr
-    void _deserialization_implementation(std::chrono::duration<R, P>& duration);
+    void _deserialization_implementation(std::chrono::duration<R, P>& duration) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::basic_string<T>& string);
+    void _serialization_implementation(const std::basic_string<T>& string) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::basic_string<T>& string);
+    void _deserialization_implementation(std::basic_string<T>& string) noexcept;
 
     template<typename T, size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::array<T, N>& array);
+    void _serialization_implementation(const std::array<T, N>& array) noexcept;
 
     template<typename T, size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::array<T, N>& array);
+    void _deserialization_implementation(std::array<T, N>& array) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::vector<T>& vector);
+    void _serialization_implementation(const std::vector<T>& vector) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::vector<T>& vector);
+    void _deserialization_implementation(std::vector<T>& vector) noexcept;
 
     inline
-    void _serialization_implementation(const std::vector<bool>& vector);
+    void _serialization_implementation(const std::vector<bool>& vector) noexcept;
     
     inline
-    void _deserialization_implementation(std::vector<bool>& vector);
+    void _deserialization_implementation(std::vector<bool>& vector) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::valarray<T>& valarray);
+    void _serialization_implementation(const std::valarray<T>& valarray) noexcept;
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::valarray<T>& valarray);
+    void _deserialization_implementation(std::valarray<T>& valarray) noexcept;
 
     template<size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::bitset<N>& bitset);
+    void _serialization_implementation(const std::bitset<N>& bitset) noexcept;
 
     template<size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::bitset<N>& bitset);
+    void _deserialization_implementation(std::bitset<N>& bitset) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::list<T>& list);
+    void _serialization_implementation(const std::list<T>& list) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::list<T>& list);
+    void _deserialization_implementation(std::list<T>& list) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::stack<T>& stack);
+    void _serialization_implementation(const std::stack<T>& stack) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::stack<T>& stack);
+    void _deserialization_implementation(std::stack<T>& stack) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::forward_list<T>& forward_list);
+    void _serialization_implementation(const std::forward_list<T>& forward_list) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::forward_list<T>& forward_list);
+    void _deserialization_implementation(std::forward_list<T>& forward_list) noexcept;
 
-    template<typename T>
+    template<typename T, typename S>
     constexpr
-    void _serialization_implementation(const std::queue<T>& queue);
+    void _serialization_implementation(const std::queue<T, S>& queue) noexcept;
 
-    template<typename T>
+    template<typename T, typename S>
     constexpr
-    void _deserialization_implementation(std::queue<T>& queue);
+    void _deserialization_implementation(std::queue<T, S>& queue) noexcept;
 
     template<typename T, class C, class F>
     constexpr
-    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue);
+    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue) noexcept;
 
     template<typename T, class C, class F>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue);
+    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue) noexcept;
 
-    template<typename T>
+    template<typename T, typename A>
     constexpr
-    void _serialization_implementation(const std::deque<T>& deque);
+    void _serialization_implementation(const std::deque<T, A>& deque) noexcept;
 
-    template<typename T>
+    template<typename T, typename A>
     constexpr
-    void _deserialization_implementation(std::deque<T>& deque);
-
-    template<typename T1, typename T2>
-    constexpr
-    void _serialization_implementation(const std::pair<T1, T2>& pair);
+    void _deserialization_implementation(std::deque<T, A>& deque) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::pair<T1, T2>& pair);
+    void _serialization_implementation(const std::pair<T1, T2>& pair) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map);
+    void _deserialization_implementation(std::pair<T1, T2>& pair) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map);
+    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap);
+    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap);
+    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::map<T1, T2>& map);
+    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::map<T1, T2>& map);
+    void _serialization_implementation(const std::map<T1, T2>& map) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::multimap<T1, T2>& multimap);
+    void _deserialization_implementation(std::map<T1, T2>& map) noexcept;
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::multimap<T1, T2>& multimap);
+    void _serialization_implementation(const std::multimap<T1, T2>& multimap) noexcept;
+
+    template<typename T1, typename T2>
+    constexpr
+    void _deserialization_implementation(std::multimap<T1, T2>& multimap) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::unordered_set<T>& unordered_set);
+    void _serialization_implementation(const std::unordered_set<T>& unordered_set) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::unordered_set<T>& unordered_set);
+    void _deserialization_implementation(std::unordered_set<T>& unordered_set) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset);
+    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset);
+    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::set<T>& set);
+    void _serialization_implementation(const std::set<T>& set) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::set<T>& set);
+    void _deserialization_implementation(std::set<T>& set) noexcept;
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::multiset<T>& multiset);
+    void _serialization_implementation(const std::multiset<T>& multiset) noexcept;
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::multiset<T>& multiset);
+    void _deserialization_implementation(std::multiset<T>& multiset) noexcept;
 
     template<typename... T>
     constexpr
-    void _serialization_implementation(const std::tuple<T...>& tuple);
+    void _serialization_implementation(const std::tuple<T...>& tuple) noexcept;
 
     template<typename... T>
     constexpr
-    void _deserialization_implementation(std::tuple<T...>& tuple);
+    void _deserialization_implementation(std::tuple<T...>& tuple) noexcept;
 
     template<typename T, typename... T_>
     constexpr
-    auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) == 0, size_t>::type
+    auto _sizeof_things() noexcept -> typename std::enable_if<sizeof...(T_) == 0, size_t>::type
     {
       return sizeof(T);
     }
 
     template<typename T, typename... T_>
     constexpr
-    auto _sizeof_things() -> typename std::enable_if<sizeof...(T_) != 0, size_t>::type
+    auto _sizeof_things() noexcept -> typename std::enable_if<sizeof...(T_) != 0, size_t>::type
     {
       return sizeof(T) + _sizeof_things<T_...>();
     }
 
-    inline _srz_impl_CONSTEXPR_CPP14 void _serialize_things() {}
+    inline _srz_impl_CONSTEXPR_CPP14 void _serialize_things() noexcept {}
 
     template<typename T, typename... T_>
     constexpr
-    void _serialize_things(const T& thing, const T_&... remaining_things)
+    void _serialize_things(const T& thing, const T_&... remaining_things) noexcept
     {
       _serialization_implementation(thing);
       _serialize_things(remaining_things...);
     }
 
-    inline _srz_impl_CONSTEXPR_CPP14 void _deserialize_things() {}
+    inline _srz_impl_CONSTEXPR_CPP14 void _deserialize_things() noexcept {}
 
     template<typename T, typename... T_>
     constexpr
-    void _deserialize_things(T& thing, T_&... remaining_things)
+    void _deserialize_things(T& thing, T_&... remaining_things) noexcept
     {
       _deserialization_implementation(thing);
       _deserialize_things(remaining_things...);
@@ -754,20 +754,20 @@ namespace srz
     inline // recursive calls to appropriate deserialization overloads
     void deserialization(T&... data) noexcept;
 
-    friend void _impl::_serialization_implementation(const Serializable& data);
-    friend void _impl::_deserialization_implementation(Serializable& data);
+    friend void _impl::_serialization_implementation(const Serializable& data) noexcept;
+    friend void _impl::_deserialization_implementation(Serializable& data) noexcept;
   };
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
-    void _serialization_implementation(const Serializable& serializable_)
+    void _serialization_implementation(const Serializable& serializable_) noexcept
     {
       _srz_impl_IDEBUGGING("Serializable");
 
       serializable_.serialization_sequence();
     }
 
-    void _deserialization_implementation(Serializable& serializable_)
+    void _deserialization_implementation(Serializable& serializable_) noexcept
     {
       _srz_impl_IDEBUGGING("Serializable");
 
@@ -776,7 +776,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::complex<T>& complex_)
+    void _serialization_implementation(const std::complex<T>& complex_) noexcept
     {
       _srz_impl_IDEBUGGING("std::complex<%s>", _underlying_name<T>());
 
@@ -786,17 +786,17 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::complex<T>& complex)
+    void _deserialization_implementation(std::complex<T>& complex_) noexcept
     {
       _srz_impl_IDEBUGGING("std::complex<%s>", _underlying_name<T>());
 
-      _deserialization_implementation(complex.real);
-      _deserialization_implementation(complex.imag);
+      _deserialization_implementation(complex_.real);
+      _deserialization_implementation(complex_.imag);
     }
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::atomic<T>& atomic_)
+    void _serialization_implementation(const std::atomic<T>& atomic_) noexcept
     {
       _srz_impl_IDEBUGGING("std::atomic<%s>", _underlying_name<T>());
 
@@ -805,7 +805,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::atomic<T>& atomic_)
+    void _deserialization_implementation(std::atomic<T>& atomic_) noexcept
     {
       _srz_impl_IDEBUGGING("std::atomic<%s>", _underlying_name<T>());
       
@@ -816,21 +816,21 @@ namespace srz
 
     template<intmax_t N, intmax_t D>
     constexpr
-    void _serialization_implementation(const std::ratio<N, D>)
+    void _serialization_implementation(const std::ratio<N, D>) noexcept
     {
       _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
     }
 
     template<intmax_t N, intmax_t D>
     constexpr
-    void _deserialization_implementation(std::ratio<N, D>&)
+    void _deserialization_implementation(std::ratio<N, D>&) noexcept
     {
       _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
     }
 
     template<class R, class P>
     constexpr
-    void _serialization_implementation(const std::chrono::duration<R, P> duration_)
+    void _serialization_implementation(const std::chrono::duration<R, P> duration_) noexcept
     {
       _srz_impl_IDEBUGGING("std::chrono::duration<%s, %s>", std::string(_underlying_name<R>()).c_str(), _underlying_name<P>());
 
@@ -839,7 +839,7 @@ namespace srz
 
     template<class R, class P>
     constexpr
-    void _deserialization_implementation(std::chrono::duration<R, P>& duration_)
+    void _deserialization_implementation(std::chrono::duration<R, P>& duration_) noexcept
     {
       _srz_impl_IDEBUGGING("std::chrono::duration<%s, %s>", std::string(_underlying_name<R>()).c_str(), _underlying_name<P>());
 
@@ -850,7 +850,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::basic_string<T>& string_)
+    void _serialization_implementation(const std::basic_string<T>& string_) noexcept
     {
       _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
@@ -871,7 +871,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::basic_string<T>& string_)
+    void _deserialization_implementation(std::basic_string<T>& string_) noexcept
     {
       _srz_impl_IDEBUGGING("std::basic_string<%s>", _underlying_name<T>());
 
@@ -895,7 +895,7 @@ namespace srz
 
     template<typename T, size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::array<T, N>& array_)
+    void _serialization_implementation(const std::array<T, N>& array_) noexcept
     {
       _srz_impl_IDEBUGGING("std::array<%s, %zu>", _underlying_name<T>(), N);
 
@@ -914,7 +914,7 @@ namespace srz
 
     template<typename T, size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::array<T, N>& array_)
+    void _deserialization_implementation(std::array<T, N>& array_) noexcept
     {
       _srz_impl_IDEBUGGING("std::array<%s, %zu>", _underlying_name<T>(), N);
 
@@ -933,7 +933,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::vector<T>& vector_)
+    void _serialization_implementation(const std::vector<T>& vector_) noexcept
     {
       _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
@@ -954,7 +954,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::vector<T>& vector_)
+    void _deserialization_implementation(std::vector<T>& vector_) noexcept
     {
       _srz_impl_IDEBUGGING("std::vector<%s>", _underlying_name<T>());
 
@@ -976,7 +976,7 @@ namespace srz
       }
     }
 
-    void _serialization_implementation(const std::vector<bool>& vector_)
+    void _serialization_implementation(const std::vector<bool>& vector_) noexcept
     {
       _srz_impl_IDEBUGGING("std::vector<bool>");
 
@@ -988,7 +988,7 @@ namespace srz
       }
     }
 
-    void _deserialization_implementation(std::vector<bool>& vector_)
+    void _deserialization_implementation(std::vector<bool>& vector_) noexcept
     {
       _srz_impl_IDEBUGGING("std::vector<bool>");
 
@@ -1007,7 +1007,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::valarray<T>& valarray_)
+    void _serialization_implementation(const std::valarray<T>& valarray_) noexcept
     {
       _srz_impl_IDEBUGGING("std::valarray<%s>", _underlying_name<T>());
 
@@ -1028,7 +1028,7 @@ namespace srz
 
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::valarray<T>& valarray_)
+    void _deserialization_implementation(std::valarray<T>& valarray_) noexcept
     {
       _srz_impl_IDEBUGGING("std::valarray<%s>", _underlying_name<T>());
 
@@ -1052,7 +1052,7 @@ namespace srz
 
     template<size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _serialization_implementation(const std::bitset<N>& bitset_)
+    void _serialization_implementation(const std::bitset<N>& bitset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::bitset<%zu>", N);
       
@@ -1061,7 +1061,7 @@ namespace srz
 
     template<size_t N>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::bitset<N>& bitset_)
+    void _deserialization_implementation(std::bitset<N>& bitset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::bitset<%zu>", N);
 
@@ -1070,7 +1070,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::list<T>& list_)
+    void _serialization_implementation(const std::list<T>& list_) noexcept
     {
       _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
@@ -1084,7 +1084,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::list<T>& list_)
+    void _deserialization_implementation(std::list<T>& list_) noexcept
     {
       _srz_impl_IDEBUGGING("std::list<%s>", _underlying_name<T>());
 
@@ -1100,7 +1100,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::stack<T>& stack_)
+    void _serialization_implementation(const std::stack<T>& stack_) noexcept
     {
       _srz_impl_IDEBUGGING("std::stack<%s>", _underlying_name<T>());
 
@@ -1118,7 +1118,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::stack<T>& stack_)
+    void _deserialization_implementation(std::stack<T>& stack_) noexcept
     {
       _srz_impl_IDEBUGGING("std::stack<%s>", _underlying_name<T>());
 
@@ -1144,7 +1144,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::forward_list<T>& forward_list_)
+    void _serialization_implementation(const std::forward_list<T>& forward_list_) noexcept
     {
       _srz_impl_IDEBUGGING("std::forward_list<%s>", _underlying_name<T>());
 
@@ -1163,7 +1163,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::forward_list<T>& forward_list_)
+    void _deserialization_implementation(std::forward_list<T>& forward_list_) noexcept
     {
       _srz_impl_IDEBUGGING("std::forward_list<%s>", _underlying_name<T>());
 
@@ -1177,13 +1177,13 @@ namespace srz
       }
     }
 
-    template<typename T>
+    template<typename T, typename S>
     constexpr
-    void _serialization_implementation(const std::queue<T>& queue_)
+    void _serialization_implementation(const std::queue<T, S>& queue_) noexcept
     {
       _srz_impl_IDEBUGGING("std::queue<%s>", _underlying_name<T>());
 
-      std::queue<T> temp = queue_;
+      std::queue<T, S> temp = queue_;
 
       const auto size = queue_.size();
       _size_t_serialization_implementation(size);
@@ -1195,16 +1195,16 @@ namespace srz
       }
     }
 
-    template<typename T>
+    template<typename T, typename S>
     constexpr
-    void _deserialization_implementation(std::queue<T>& queue_)
+    void _deserialization_implementation(std::queue<T, S>& queue_) noexcept
     {
       _srz_impl_IDEBUGGING("std::queue<%s>", _underlying_name<T>());
 
       size_t size = {};
       _size_t_deserialization_implementation(size);
 
-      queue_ = std::queue<T>();
+      queue_ = std::queue<T, S>();
 
       T value = {};
       for (size_t k = size; k; --k)
@@ -1216,7 +1216,7 @@ namespace srz
 
     template<typename T, class C, class F>
     constexpr
-    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue_)
+    void _serialization_implementation(const std::priority_queue<T, C, F>& priority_queue_) noexcept
     {
       _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
 
@@ -1235,7 +1235,7 @@ namespace srz
 
     template<typename T, class C, class F>
     _srz_impl_CONSTEXPR_CPP14
-    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue_)
+    void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue_) noexcept
     {
       _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
       
@@ -1252,9 +1252,9 @@ namespace srz
       }
     }
 
-    template<typename T>
+    template<typename T, typename A>
     constexpr
-    void _serialization_implementation(const std::deque<T>& deque_)
+    void _serialization_implementation(const std::deque<T, A>& deque_) noexcept
     {
       _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
@@ -1266,9 +1266,9 @@ namespace srz
       }
     }
 
-    template<typename T>
+    template<typename T, typename A>
     constexpr
-    void _deserialization_implementation(std::deque<T>& deque_)
+    void _deserialization_implementation(std::deque<T, A>& deque_) noexcept
     {
       _srz_impl_IDEBUGGING("std::deque<%s>", _underlying_name<T>());
 
@@ -1284,7 +1284,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::pair<T1, T2>& pair_)
+    void _serialization_implementation(const std::pair<T1, T2>& pair_) noexcept
     {
       _srz_impl_IDEBUGGING("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
 
@@ -1294,7 +1294,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::pair<T1, T2>& pair_)
+    void _deserialization_implementation(std::pair<T1, T2>& pair_) noexcept
     {
       _srz_impl_IDEBUGGING("std::pair<%s, %s>", _underlying_name<T1>(), _underlying_name<T2>());
 
@@ -1304,7 +1304,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map_)
+    void _serialization_implementation(const std::unordered_map<T1, T2>& unordered_map_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_map");
 
@@ -1318,7 +1318,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map_)
+    void _deserialization_implementation(std::unordered_map<T1, T2>& unordered_map_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_map");
 
@@ -1338,7 +1338,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap_)
+    void _serialization_implementation(const std::unordered_multimap<T1, T2>& unordered_multimap_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_multimap");
 
@@ -1352,7 +1352,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap_)
+    void _deserialization_implementation(std::unordered_multimap<T1, T2>& unordered_multimap_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_multimap");
 
@@ -1372,7 +1372,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::map<T1, T2>& map_)
+    void _serialization_implementation(const std::map<T1, T2>& map_) noexcept
     {
       _srz_impl_IDEBUGGING("std::map");
 
@@ -1386,7 +1386,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::map<T1, T2>& map_)
+    void _deserialization_implementation(std::map<T1, T2>& map_) noexcept
     {
       _srz_impl_IDEBUGGING("std::map");
 
@@ -1405,7 +1405,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _serialization_implementation(const std::multimap<T1, T2>& multimap_)
+    void _serialization_implementation(const std::multimap<T1, T2>& multimap_) noexcept
     {
       _srz_impl_IDEBUGGING("std::multimap");
 
@@ -1419,7 +1419,7 @@ namespace srz
 
     template<typename T1, typename T2>
     constexpr
-    void _deserialization_implementation(std::multimap<T1, T2>& multimap_)
+    void _deserialization_implementation(std::multimap<T1, T2>& multimap_) noexcept
     {
       _srz_impl_IDEBUGGING("std::multimap");
 
@@ -1438,7 +1438,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::unordered_set<T>& unordered_set_)
+    void _serialization_implementation(const std::unordered_set<T>& unordered_set_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_set");
 
@@ -1452,7 +1452,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::unordered_set<T>& unordered_set_)
+    void _deserialization_implementation(std::unordered_set<T>& unordered_set_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_set");
 
@@ -1472,7 +1472,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset_)
+    void _serialization_implementation(const std::unordered_multiset<T>& unordered_multiset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_multiset");
 
@@ -1486,7 +1486,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset_)
+    void _deserialization_implementation(std::unordered_multiset<T>& unordered_multiset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::unordered_multiset");
 
@@ -1506,7 +1506,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::set<T>& set_)
+    void _serialization_implementation(const std::set<T>& set_) noexcept
     {
       _srz_impl_IDEBUGGING("std::set");
 
@@ -1520,7 +1520,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::set<T>& set_)
+    void _deserialization_implementation(std::set<T>& set_) noexcept
     {
       _srz_impl_IDEBUGGING("std::set");
 
@@ -1539,7 +1539,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _serialization_implementation(const std::multiset<T>& multiset_)
+    void _serialization_implementation(const std::multiset<T>& multiset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::multiset");
 
@@ -1553,7 +1553,7 @@ namespace srz
 
     template<typename T>
     constexpr
-    void _deserialization_implementation(std::multiset<T>& multiset_)
+    void _deserialization_implementation(std::multiset<T>& multiset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::multiset");
 
@@ -1574,19 +1574,19 @@ namespace srz
     struct _tuple_serialization
     {
       static inline constexpr
-      void implementation(const std::tuple<T...>& tuple);
+      void implementation(const std::tuple<T...>& tuple) noexcept;
     };
 
     template<typename... T>
     struct _tuple_serialization<0, T...>
     {
       static inline constexpr
-      void implementation(const std::tuple<T...>&) {}
+      void implementation(const std::tuple<T...>&) noexcept {}
     };
 
     template<size_t N, typename... T>
     constexpr
-    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple_)
+    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple_) noexcept
     {
       _serialization_implementation(std::get<sizeof...(T) - N>(tuple_));
       _tuple_serialization<N-1, T...>::implementation(tuple_);
@@ -1594,7 +1594,7 @@ namespace srz
 
     template<typename... T>
     constexpr
-    void _serialization_implementation(const std::tuple<T...>& tuple_)
+    void _serialization_implementation(const std::tuple<T...>& tuple_) noexcept
     {
       _srz_impl_IDEBUGGING("std::tuple");
 
@@ -1605,19 +1605,19 @@ namespace srz
     struct _tuple_deserialization
     {
       static inline constexpr
-      void implementation(std::tuple<T...>& tuple);
+      void implementation(std::tuple<T...>& tuple) noexcept;
     };
 
     template<typename... T>
     struct _tuple_deserialization<0, T...>
     {
       static inline constexpr
-      void implementation(std::tuple<T...>&) {}
+      void implementation(std::tuple<T...>&) noexcept {}
     };
 
     template<size_t N, typename... T>
     constexpr
-    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple_)
+    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple_) noexcept
     {
       _deserialization_implementation(std::get<sizeof...(T) - N>(tuple_));
       _tuple_deserialization<N-1, T...>::implementation(tuple_);
@@ -1625,7 +1625,7 @@ namespace srz
 
     template<typename... T>
     constexpr
-    void _deserialization_implementation(std::tuple<T...>& tuple_)
+    void _deserialization_implementation(std::tuple<T...>& tuple_) noexcept
     {
       _srz_impl_IDEBUGGING("std::tuple");
 
