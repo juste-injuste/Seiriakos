@@ -1,4 +1,4 @@
-// #define SRZ_DEBUGGING
+#define SRZ_DEBUGGING
 #define SRZ_UNSAFE
 #define SRZ_NOT_THREADSAFE
 #define SRZ_FIXED_LENGHT

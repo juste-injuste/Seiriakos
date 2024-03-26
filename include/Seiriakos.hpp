@@ -207,7 +207,9 @@ namespace srz
       _srz_impl_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
       _srz_impl_PRAGMA(clang diagnostic pop)
+#   define _srz_impl_GCC_IGNORE(WARNING, ...)   __VA_ARGS__
 # elif defined(__GNUC__)
+#   define _srz_impl_CLANG_IGNORE(WARNING, ...) __VA_ARGS__
 #   define _srz_impl_GCC_IGNORE(WARNING, ...)          \
       _srz_impl_PRAGMA(GCC diagnostic push)            \
       _srz_impl_PRAGMA(GCC diagnostic ignored WARNING) \
@@ -346,7 +348,11 @@ namespace srz
           _io::dbg << "  ";
         }
 
-        std::sprintf(_dbg_buf, arguments_...);
+        _srz_impl_GCC_IGNORE("-Wformat-security",   _srz_impl_CLANG_IGNORE("-Wformat-security",
+        _srz_impl_GCC_IGNORE("-Wformat-nonliteral", _srz_impl_CLANG_IGNORE("-Wformat-nonliteral",
+          std::sprintf(_dbg_buf, arguments_...);
+        ))
+        ))
 
         _io::dbg << _dbg_buf << std::endl;
       }
