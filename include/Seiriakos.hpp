@@ -141,7 +141,7 @@ namespace srz
   // abstract class to add serialization capabilities
   class Serializable;
 
-  // macro to facilitate serialization/deserialization member function implementations
+  // macro to implement serialization/deserialization member functions
 # define SRZ_SERIALIZATION_SEQUENCE(...)
 
   inline // print bytes from memory
@@ -185,13 +185,13 @@ namespace srz
     {
       return _code;
     }
-    
+
     constexpr
     const char* description() const
     {
       return "text";
     }
-    
+
     operator bool() const = delete;
 
   private:
@@ -379,7 +379,7 @@ namespace srz
 # endif
 
 # if defined(SRZ_UNSAFE)
-#   define _srz_impl_SAFE(...)   
+#   define _srz_impl_SAFE(...)
 #   define _srz_impl_UNSAFE(...) __VA_ARGS__
 # else
 #   define _srz_impl_SAFE(...)   __VA_ARGS__
@@ -443,13 +443,13 @@ namespace srz
       _srz_impl_IDEBUGGING("size_t");
 
       uint8_t bytes_used = 1;
-      for (size_t k = size_; k >>= 8; ++bytes_used) {}
+      for (size_t bytes = size_; bytes >>= 8; ++bytes_used) {}
 
       _buffer.push_back(bytes_used);
 
-      for (size_t k = 0; bytes_used; k += 8, --bytes_used)
+      for (size_t bytes = size_; bytes_used; bytes >>= 8, --bytes_used)
       {
-        _buffer.push_back(static_cast<uint8_t>((size_ >> k) & 0xFF));
+        _buffer.push_back(static_cast<uint8_t>(bytes & 0xFF));
       }
 #   endif
     }
@@ -482,8 +482,8 @@ namespace srz
       )
 
       size_ = {};
-      {
       for (size_t k = 0; bytes_used; k += 8, --bytes_used)
+      {
         size_ |= (_buffer[_front_of_buffer++] << k);
       }
 #   endif
@@ -553,7 +553,7 @@ namespace srz
 
     inline
     void _serialization_implementation(const std::vector<bool>& vector) noexcept;
-    
+
     inline
     void _deserialization_implementation(std::vector<bool>& vector) noexcept;
 
@@ -734,6 +734,26 @@ namespace srz
       _deserialization_implementation(thing);
       _deserialize_things(remaining_things...);
     }
+
+    namespace _serialization
+    {
+      template<typename... T>
+      constexpr
+      void serialization(const T&... data_) noexcept
+      {
+        _impl::_serialize_things(data_...);
+      }
+    }
+
+    namespace _deserialization
+    {
+      template<typename... T>
+      constexpr
+      void serialization(T&... data_) noexcept
+      {
+        _impl::_deserialize_things(data_...);
+      }
+    }
   }
 //----------------------------------------------------------------------------------------------------------------------
   class Serializable
@@ -751,14 +771,6 @@ namespace srz
 
     virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence() noexcept = 0;
-
-    template<typename... T>
-    inline // recursive calls to appropriate serialization overloads
-    void serialization(const T&... data) const noexcept;
-
-    template<typename... T>
-    inline // recursive calls to appropriate deserialization overloads
-    void deserialization(T&... data) noexcept;
 
     friend void _impl::_serialization_implementation(const Serializable& data) noexcept;
     friend void _impl::_deserialization_implementation(Serializable& data) noexcept;
@@ -814,7 +826,7 @@ namespace srz
     void _deserialization_implementation(std::atomic<T>& atomic_) noexcept
     {
       _srz_impl_IDEBUGGING("std::atomic<%s>", _underlying_name<T>());
-      
+
       T value = {};
       _deserialization_implementation(value);
       atomic_ = value;
@@ -1061,7 +1073,7 @@ namespace srz
     void _serialization_implementation(const std::bitset<N>& bitset_) noexcept
     {
       _srz_impl_IDEBUGGING("std::bitset<%zu>", N);
-      
+
       _serialization_implementation(bitset_, 1);
     }
 
@@ -1244,7 +1256,7 @@ namespace srz
     void _deserialization_implementation(std::priority_queue<T, C, F>& priority_queue_) noexcept
     {
       _srz_impl_IDEBUGGING("std::priority_queue<%s>", _underlying_name<std::priority_queue<T, C, F>>());
-      
+
       size_t size = 0;
       _size_t_deserialization_implementation(size);
 
@@ -1640,7 +1652,7 @@ namespace srz
   }
 //----------------------------------------------------------------------------------------------------------------------
   template<typename... T>
-  _srz_impl_NODISCARD_REASON("serialize: ignoring the return value makes no sens")
+  _srz_impl_NODISCARD_REASON("serialize: ignoring the return value makes no sens.")
   auto serialize(const T&... things_) noexcept -> std::vector<uint8_t>
   {
     _srz_impl_DEBUGGING("----serialization summary:");
@@ -1693,29 +1705,19 @@ namespace srz
   {
     return srz::deserialize(data_, size_, *this);
   }
-
-  template<typename... T>
-  void Serializable::serialization(const T&... data_) const noexcept
-  {
-    _impl::_serialize_things(data_...);
-  }
-
-  template<typename... T>
-  void Serializable::deserialization(T&... data_) noexcept
-  {
-    _impl::_deserialize_things(data_...);
-  }
 //----------------------------------------------------------------------------------------------------------------------
 # undef  SRZ_SERIALIZATION_SEQUENCE
 # define SRZ_SERIALIZATION_SEQUENCE(...)                    \
     private:                                                \
       void serialization_sequence() const noexcept override \
       {                                                     \
-        serialization(__VA_ARGS__);                         \
+        using srz::_impl::_serialization::serialization;    \
+        __VA_ARGS__                                         \
       }                                                     \
       void deserialization_sequence() noexcept override     \
       {                                                     \
-        deserialization(__VA_ARGS__);                       \
+        using srz::_impl::_deserialization::serialization;  \
+        __VA_ARGS__                                         \
       }
 //----------------------------------------------------------------------------------------------------------------------
   auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*

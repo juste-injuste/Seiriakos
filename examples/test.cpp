@@ -1,7 +1,7 @@
-#define SRZ_DEBUGGING
+// #define SRZ_DEBUGGING
 #define SRZ_UNSAFE
 #define SRZ_NOT_THREADSAFE
-#define SRZ_FIXED_LENGHT
+// #define SRZ_FIXED_LENGHT
 #include "Seiriakos.hpp"
 #include "../include/Chronometro.hpp"
 #include <iostream>
@@ -14,7 +14,10 @@ struct SDS final : public srz::Serializable
 {
   uint16_t a;
 
-  SRZ_SERIALIZATION_SEQUENCE(a);
+  SRZ_SERIALIZATION_SEQUENCE
+  (
+    serialization(a);
+  )
 };
 
 struct Something final : public srz::Serializable
@@ -27,13 +30,16 @@ struct Something final : public srz::Serializable
   std::map<int, std::string>              f;
   std::vector<double>                     g;
   std::bitset<4>                          h;
-  std::atomic_int i;
-  std::ratio<4, 3> j;
-  std::stack<int> k;
-  std::queue<int> l;
-  std::forward_list<int> m;
+  std::atomic_int                         i;
+  std::ratio<4, 3>                        j;
+  std::stack<int>                         k;
+  std::queue<int>                         l;
+  std::forward_list<int>                  m;
 
-  SRZ_SERIALIZATION_SEQUENCE(a, b, c, d, e, f, g, h, i, j, k, l, m);
+  SRZ_SERIALIZATION_SEQUENCE
+  (
+    serialization(a, b, c, d, e, f, g, h, i, j, k, l, m);
+  )
 };
 
 int main()
@@ -42,7 +48,7 @@ int main()
   std::vector<uint8_t> serialized;
   
   something.a = {'h', 'e', 'a', 'd', '\0'};
-  something.b = "allo ceci est une string de taille moyennement grande";
+  something.b = "ceci est une string de taille moyenne.";
   something.c.a = 0xBEEF;
   something.d = {2, {7, 3.1415}};
   something.e = "bye";
@@ -61,7 +67,7 @@ loop:
   CHZ_LOOP_FOR(100000)
   serialized = something.serialize();
 
-  std::cout << serialized.size();
+  // std::cout << serialized.size() << '\n';
 
   // std::cout << "a:   " << something.a.data() << '\n';
   // std::cout << "b:   " << something.b << '\n';
@@ -83,7 +89,7 @@ loop:
   // }
   // std::cout << '\n';
 
-  // std::cout << Seiriakos::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
+  // std::cout << srz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
   CHZ_MEASURE(10, "iteration %# took %ms")
   CHZ_LOOP_FOR(100000)
