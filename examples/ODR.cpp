@@ -7,10 +7,7 @@ int test()
     std::array<float, 5> a;
     std::string          b;
 
-    SRZ_SERIALIZATION_SEQUENCE
-    (
-      serialization(a, b);
-    );
+    SRZ_SERIALIZATION_TRIVIAL(a, b)
   } to_serialize, deserialized;
 
   auto serialized_data = to_serialize.serialize();

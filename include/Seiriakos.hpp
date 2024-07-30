@@ -767,11 +767,12 @@ namespace srz
 
     inline // deserialize into *this according to deserialization_sequence
     Info deserialize(const uint8_t data[], size_t size) noexcept;
+
   protected:
-    virtual // serialization sequence (provided by the inheriting class)
+    virtual // serialization sequence (provided by the inheriting class via SRZ_SERIALIZATION_SEQUENCE)
     void serialization_sequence() const noexcept = 0;
 
-    virtual // deserialization sequence (provided by the inheriting class)
+    virtual // deserialization sequence (provided by the inheriting class via SRZ_SERIALIZATION_SEQUENCE)
     void deserialization_sequence() noexcept = 0;
 
     friend _impl::_Serializable_backdoor;
@@ -1734,6 +1735,18 @@ namespace srz
       {                                                     \
         using srz::_impl::_deserialization::serialization;  \
         __VA_ARGS__                                         \
+      }
+//----------------------------------------------------------------------------------------------------------------------
+# undef  SRZ_SERIALIZATION_TRIVIAL
+# define SRZ_SERIALIZATION_TRIVIAL(...)                     \
+    private:                                                \
+      void serialization_sequence() const noexcept override \
+      {                                                     \
+        srz::_impl::_serialize_things(__VA_ARGS__);         \
+      }                                                     \
+      void deserialization_sequence() noexcept override     \
+      {                                                     \
+        srz::_impl::_deserialize_things(__VA_ARGS__);       \
       }
 //----------------------------------------------------------------------------------------------------------------------
   auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*

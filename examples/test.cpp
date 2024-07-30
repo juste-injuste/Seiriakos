@@ -14,10 +14,7 @@ struct SDS final : public srz::Serializable
 {
   uint16_t a;
 
-  SRZ_SERIALIZATION_SEQUENCE
-  (
-    serialization(a);
-  )
+  SRZ_SERIALIZATION_TRIVIAL(a)
 };
 
 struct Something final : public srz::Serializable
@@ -36,10 +33,7 @@ struct Something final : public srz::Serializable
   std::queue<int>                         l;
   std::forward_list<int>                  m;
 
-  SRZ_SERIALIZATION_SEQUENCE
-  (
-    serialization(a, b, c, d, e, f, g, h, i, j, k, l, m);
-  )
+  SRZ_SERIALIZATION_TRIVIAL(a, b, c, d, e, f, g, h, i, j, k, l, m);
 };
 
 int main()
@@ -63,7 +57,7 @@ int main()
   something.k.push(3);
 
 loop:
-  CHZ_MEASURE(10, "iteration %# took %ms")
+  // CHZ_MEASURE(10, "iteration %# took %ms")
   CHZ_LOOP_FOR(100000)
   serialized = something.serialize();
 
@@ -91,7 +85,7 @@ loop:
 
   // std::cout << srz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
-  CHZ_MEASURE(10, "iteration %# took %ms")
+  // CHZ_MEASURE(10, "iteration %# took %ms")
   CHZ_LOOP_FOR(100000)
   decoded.deserialize(serialized.data(), serialized.size());
 
