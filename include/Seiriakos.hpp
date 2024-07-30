@@ -754,6 +754,8 @@ namespace srz
         _impl::_deserialize_things(data_...);
       }
     }
+
+    struct _Serializable_backdoor;
   }
 //----------------------------------------------------------------------------------------------------------------------
   class Serializable
@@ -772,24 +774,38 @@ namespace srz
     virtual // deserialization sequence (provided by the inheriting class)
     void deserialization_sequence() noexcept = 0;
 
-    friend void _impl::_serialization_implementation(const Serializable& data) noexcept;
-    friend void _impl::_deserialization_implementation(Serializable& data) noexcept;
+    friend _impl::_Serializable_backdoor;
   };
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
+    struct _Serializable_backdoor
+    {
+      static _srz_impl_CONSTEXPR_CPP14
+      void _serialization_sequence(const Serializable& serializable_) noexcept
+      {
+        serializable_.serialization_sequence();
+      }
+
+      static _srz_impl_CONSTEXPR_CPP14
+      void _deserialization_sequence(Serializable& serializable_) noexcept
+      {
+        serializable_.deserialization_sequence();
+      }
+    };
+
     void _serialization_implementation(const Serializable& serializable_) noexcept
     {
       _srz_impl_IDEBUGGING("Serializable");
 
-      serializable_.serialization_sequence();
+      _impl::_Serializable_backdoor::_serialization_sequence(serializable_);
     }
 
     void _deserialization_implementation(Serializable& serializable_) noexcept
     {
       _srz_impl_IDEBUGGING("Serializable");
 
-      serializable_.deserialization_sequence();
+      _impl::_Serializable_backdoor::_deserialization_sequence(serializable_);
     }
 
     template<typename T>
