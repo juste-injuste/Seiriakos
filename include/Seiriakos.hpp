@@ -91,7 +91,6 @@ with -Wstrict-overflow=3 and above.
 #include <valarray>      // for std::valarray
 #include <bitset>        // for std::bitset
 #include <atomic>        // for std::atomic
-#include <ratio>         // for std::ratio, intmax_t
 #include <chrono>        // for std::chrono::duration
 #include <stack>         // for std::stack
 #include <forward_list>  // for std::forward_list
@@ -511,14 +510,6 @@ namespace srz
     constexpr
     void _deserialization_implementation(std::atomic<T>& atomic) noexcept;
 
-    template<intmax_t N, intmax_t D>
-    constexpr
-    void _serialization_implementation(const std::ratio<N, D>) noexcept;
-
-    template<intmax_t N, intmax_t D>
-    constexpr
-    void _deserialization_implementation(std::ratio<N, D>&) noexcept;
-
     template<class R, class P>
     constexpr
     void _serialization_implementation(const std::chrono::duration<R, P> duration) noexcept;
@@ -847,20 +838,6 @@ namespace srz
       T value = {};
       _deserialization_implementation(value);
       atomic_ = value;
-    }
-
-    template<intmax_t N, intmax_t D>
-    constexpr
-    void _serialization_implementation(const std::ratio<N, D>) noexcept
-    {
-      _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
-    }
-
-    template<intmax_t N, intmax_t D>
-    constexpr
-    void _deserialization_implementation(std::ratio<N, D>&) noexcept
-    {
-      _srz_impl_IDEBUGGING("std::ratio<%ju, %ju>", N, D);
     }
 
     template<class R, class P>
@@ -1722,7 +1699,7 @@ namespace srz
   {
     return srz::deserialize(data_, size_, *this);
   }
-//----------------------------------------------------------------------------------------------------------------------
+  
 # undef  SRZ_SERIALIZATION_SEQUENCE
 # define SRZ_SERIALIZATION_SEQUENCE(...)                    \
     private:                                                \
@@ -1736,7 +1713,7 @@ namespace srz
         using srz::_impl::_deserialization::serialization;  \
         __VA_ARGS__                                         \
       }
-//----------------------------------------------------------------------------------------------------------------------
+      
 # undef  SRZ_SERIALIZATION_TRIVIAL
 # define SRZ_SERIALIZATION_TRIVIAL(...)                     \
     private:                                                \
