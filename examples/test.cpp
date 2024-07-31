@@ -28,12 +28,14 @@ struct Something final : public srz::Serializable
   std::vector<double>                     g;
   std::bitset<4>                          h;
   std::atomic_int                         i;
-  std::ratio<4, 3>                        j;
-  std::stack<int>                         k;
-  std::queue<int>                         l;
-  std::forward_list<int>                  m;
+  std::stack<int>                         j;
+  std::queue<int>                         k;
+  std::forward_list<int>                  l;
 
-  SRZ_SERIALIZATION_TRIVIAL(a, b, c, d, e, f, g, h, i, j, k, l, m);
+  SRZ_SERIALIZATION_SEQUENCE
+  (
+    serialization(a, b, c, d, e, f, g, h, i, j, k, l);
+  )
 };
 
 int main()
@@ -41,13 +43,13 @@ int main()
   Something something, decoded;
   std::vector<uint8_t> serialized;
   
-  something.a = {'h', 'e', 'a', 'd', '\0'};
-  something.b = "ceci est une string de taille moyenne.";
-  something.c.a = 0xBEEF;
-  something.d = {2, {7, 3.1415}};
-  something.e = "bye";
-  something.f = {{1, "one"}, {2, "two"}, {3, "three"}};
-  something.g = {0, 1, 1, 1, 1, 0, 1, 1};
+  something.a    = {'h', 'e', 'a', 'd', '\0'};
+  something.b    = "ceci est une string de taille moyenne.";
+  something.c.a  = 0xBEEF;
+  something.d    = {2, {7, 3.1415}};
+  something.e    = "bye";
+  something.f    = {{1, "one"}, {2, "two"}, {3, "three"}};
+  something.g    = {0, 1, 1, 1, 1, 0, 1, 1};
   something.h[0] = true;
   something.h[1] = false;
   something.h[2] = true;
