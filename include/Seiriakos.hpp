@@ -91,7 +91,6 @@ with -Wstrict-overflow=3 and above.
 #include <valarray>      // for std::valarray
 #include <bitset>        // for std::bitset
 #include <atomic>        // for std::atomic
-#include <chrono>        // for std::chrono::duration
 #include <stack>         // for std::stack
 #include <forward_list>  // for std::forward_list
 #include <queue>         // for std::queue
@@ -510,14 +509,6 @@ namespace srz
     constexpr
     void _deserialization_implementation(std::atomic<T>& atomic) noexcept;
 
-    template<class R, class P>
-    constexpr
-    void _serialization_implementation(const std::chrono::duration<R, P> duration) noexcept;
-
-    template<class R, class P>
-    constexpr
-    void _deserialization_implementation(std::chrono::duration<R, P>& duration) noexcept;
-
     template<typename T>
     _srz_impl_CONSTEXPR_CPP14
     void _serialization_implementation(const std::basic_string<T>& string) noexcept;
@@ -838,26 +829,6 @@ namespace srz
       T value = {};
       _deserialization_implementation(value);
       atomic_ = value;
-    }
-
-    template<class R, class P>
-    constexpr
-    void _serialization_implementation(const std::chrono::duration<R, P> duration_) noexcept
-    {
-      _srz_impl_IDEBUGGING("std::chrono::duration<%s, %s>", std::string(_underlying_name<R>()).c_str(), _underlying_name<P>());
-
-      _serialization_implementation(duration_.count());
-    }
-
-    template<class R, class P>
-    constexpr
-    void _deserialization_implementation(std::chrono::duration<R, P>& duration_) noexcept
-    {
-      _srz_impl_IDEBUGGING("std::chrono::duration<%s, %s>", std::string(_underlying_name<R>()).c_str(), _underlying_name<P>());
-
-      R count = {};
-      _deserialization_implementation(duration_);
-      duration_ = std::chrono::duration<R, P>(count);
     }
 
     template<typename T>
