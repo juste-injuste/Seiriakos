@@ -1,4 +1,4 @@
-// #define STZ_DEBUGGING
+#define STZ_DEBUGGING
 #define STZ_UNSAFE
 #define STZ_NOT_THREADSAFE
 // #define STZ_FIXED_LENGHT
@@ -10,14 +10,14 @@
 #include <array>
 
 // serializable data structure
-struct SDS final : public stz::Serializable
+struct SDS
 {
   uint16_t a;
 
-  STZ_TRIVIAL_SERIALIZATION(a)
+  stz::trivial_serialization(a)
 };
 
-struct Something final : public stz::Serializable
+struct Something
 {
   std::array<uint8_t, 5>                  a;
   std::string                             b;
@@ -32,7 +32,8 @@ struct Something final : public stz::Serializable
   std::queue<int>                         k;
   std::forward_list<int>                  l;
 
-  STZ_SERIALIZATION
+  stz::serialization_methods()
+  stz::serialization_sequence
   (
     serialize <= a, b, c, d, e, f, g, h, i, j, k, l;
   )
@@ -58,10 +59,9 @@ int main()
   something.k.push(2);
   something.k.push(3);
 
-
 loop:
   // STZ_MEASURE_BLOCK(10, "iteration %# took %ms")
-  STZ_MEASURE_BLOCK(100000)
+  // STZ_MEASURE_BLOCK(100000)
   binary = something.serialize();
   
   // std::cout << binary.size() << '\n';
@@ -88,8 +88,9 @@ loop:
 
   // std::cout << stz::bytes_as_cstring(binary.data(), binary.size()) << '\n';
   
+  std::cin.get();
   // STZ_MEASURE_BLOCK(10, "iteration %# took %ms")
-  STZ_MEASURE_BLOCK(100000)
+  // STZ_MEASURE_BLOCK(100000)
   decoded.deserialize(binary.data(), binary.size());
 
   // std::cout << "a:   " << decoded.a.data() << '\n';
@@ -115,3 +116,14 @@ loop:
   std::cin.get();
   goto loop;
 }
+
+  // auto Serializable::serialize() const noexcept -> std::vector<uint8_t>
+  // {
+  //   return serialize(*this);
+  // }
+
+  // Info Serializable::deserialize(const uint8_t data_[], const size_t size_) noexcept
+  // {
+  //   return deserialize(data_, size_, *this);
+  // }
+  
