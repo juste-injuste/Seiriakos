@@ -10,56 +10,53 @@ MIT License
 
 Copyright (c) 2023 Justin Asselin (juste-injuste)
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated
+documentation files (the "Software"), to deal in the Software without restriction, including without limitation the
+rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit
+persons to whom the Software is furnished to do so, subject to the following conditions:
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the
+Software.
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR
+OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 -----versions-----------------------------------------------------------------------------------------------------------
 
-Version 0.1.0 - Initial release
-
 -----description--------------------------------------------------------------------------------------------------------
 
-Chronometro is a simple and lightweight C++11 (and newer) library that allows you to measure the
-execution time of code blocks and more. See the included README.MD file for more information.
+Chronometro is a simple and lightweight C++11 (and newer) library that allows you to measure the execution time of code
+blocks and more. See the included README.MD file for more information.
 
------inclusion guard--------------------------------------------------------------------------------------------------*/
+-----inclusion avoid--------------------------------------------------------------------------------------------------*/
 #ifndef _chronometro_hpp
 #define _chronometro_hpp
+#if __cplusplus >= 201103L
 //---necessary standard libraries---------------------------------------------------------------------------------------
 #include <chrono>   // for std::chrono::steady_clock, std::chrono::high_resolution_clock, std::chrono::nanoseconds
 #include <ostream>  // for std::ostream
 #include <iostream> // for std::cout, std::endl
-#include <string>   // for std::string
+#include <string>   // for std::string, std::to_string
 #include <utility>  // for std::move
 #include <cstdio>   // for std::sprintf
 //---conditionally necessary standard libraries-------------------------------------------------------------------------
-#if not defined(CHZ_CLOCK)
+#if not defined(CHRONOMETRO_CLOCK)
 # include <type_traits> // for std::conditional
 #endif
-#if defined(__STDCPP_THREADS__) and not defined(CHZ_NOT_THREADSAFE)
-# define _chz_impl_THREADSAFE
+#if defined(__STDCPP_THREADS__) and not defined(CHRONOMETRO_NOT_THREADSAFE)
+# define  _stz_impl_THREADSAFE
 # include <mutex> // for std::mutex, std::lock_guard
 #endif
-//---Chronometro library------------------------------------------------------------------------------------------------
-namespace chz
+//----------------------------------------------------------------------------------------------------------------------
+namespace stz
 {
-  // measures the time it takes to execute the following statement/block N times, with labels
-# define CHZ_MEASURE(...)
+inline namespace chronometro
+//----------------------------------------------------------------------------------------------------------------------
+{ 
+  // measures the time it takes to execute the following
+# define STZ_MEASURE_BLOCK(...)
 
   // measure elapsed time
   class Stopwatch;
@@ -67,7 +64,8 @@ namespace chz
   // measure iterations via range-based for-loop
   class Measure;
 
-  // units in which time obtained from Stopwatch can be displayed
+  // units in which time obtained from Stopwatch can
+  // be displayed and in which sleep() be slept with.
   enum class Unit
   {
     ns,       // nanoseconds
@@ -79,103 +77,107 @@ namespace chz
     automatic // deduce appropriate unit automatically
   };
 
-  // pause thread for 'amount' 'unit's of time a desired amount of time
+  // pause calling thread for 'amount' 'unit's of time
   template<Unit unit = Unit::ms>
-  void sleep(unsigned amount) noexcept;
+  void sleep(unsigned long long amount) noexcept;
+
+  // pause calling thread for 'duration' amount of time
+  template <typename R, typename P>
+  void sleep(std::chrono::duration<R, P> duration) noexcept;
 
   // execute the following only if its last execution was atleast 'MS' milliseconds prior
-# define CHZ_ONLY_EVERY(MS)
+# define STZ_ONLY_EVERY_MS(MS)
+
+  // execute the following only 'N' times
+# define STZ_ONLY_EVERY_N(N)
 
   // execute the following 'N' times
-# define CHZ_LOOP_FOR(N)
+# define STZ_LOOP_FOR_N(N)
 
-  // break out of a loop reached 'N' times
-# define CHZ_BREAK_AFTER(N)
+  // break out of a loop when reached 'N' times
+# define STZ_BREAK_AFTER_N(N)
 
   namespace _io
   {
     static std::ostream out(std::cout.rdbuf()); // output
   }
 
-  namespace _version
-  {
-    constexpr long MAJOR  = 000;
-    constexpr long MINOR  = 001;
-    constexpr long PATCH  = 000;
-    constexpr long NUMBER = (MAJOR * 1000 + MINOR) * 1000 + PATCH;
-  }
-//---Chronometro library: backend---------------------------------------------------------------------------------------
+# define CHRONOMETRO_MAJOR    000
+# define CHRONOMETRO_MINOR    000
+# define CHRONOMETRO_PATCH    000
+# define CHRONOMETRO_VERSION ((CHRONOMETRO_MAJOR  * 1000 + CHRONOMETRO_MINOR) * 1000 + CHRONOMETRO_PATCH)
+//----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
 # if defined(__clang__)
-#   define _chz_impl_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
-#   define _chz_impl_CLANG_IGNORE(WARNING, ...)          \
-      _chz_impl_PRAGMA(clang diagnostic push)            \
-      _chz_impl_PRAGMA(clang diagnostic ignored WARNING) \
+#   define _stz_impl_PRAGMA(PRAGMA) _Pragma(#PRAGMA)
+#   define _stz_impl_CLANG_IGNORE(WARNING, ...)          \
+      _stz_impl_PRAGMA(clang diagnostic push)            \
+      _stz_impl_PRAGMA(clang diagnostic ignored WARNING) \
       __VA_ARGS__                                        \
-      _chz_impl_PRAGMA(clang diagnostic pop)
+      _stz_impl_PRAGMA(clang diagnostic pop)
 #endif
 
 // support from clang 12.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 12)
 # if __cplusplus < 202002L
-#   define _chz_impl_LIKELY   _chz_impl_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
-#   define _chz_impl_UNLIKELY _chz_impl_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
+#   define _stz_impl_LIKELY   _stz_impl_CLANG_IGNORE("-Wc++20-extensions", [[likely]])
+#   define _stz_impl_UNLIKELY _stz_impl_CLANG_IGNORE("-Wc++20-extensions", [[unlikely]])
 # else
-#   define _chz_impl_LIKELY   [[likely]]
-#   define _chz_impl_UNLIKELY [[unlikely]]
+#   define _stz_impl_LIKELY   [[likely]]
+#   define _stz_impl_UNLIKELY [[unlikely]]
 # endif
 # elif defined(__GNUC__) and (__GNUC__ >= 10)
-#   define _chz_impl_LIKELY   [[likely]]
-#   define _chz_impl_UNLIKELY [[unlikely]]
+#   define _stz_impl_LIKELY   [[likely]]
+#   define _stz_impl_UNLIKELY [[unlikely]]
 # else
-#   define _chz_impl_LIKELY
-#   define _chz_impl_UNLIKELY
+#   define _stz_impl_LIKELY
+#   define _stz_impl_UNLIKELY
 # endif
 
 // support from clang 3.9.0 and GCC 4.7.3 onward
 # if defined(__clang__)
-#   define _chz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _chz_impl_LIKELY
-#   define _chz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _chz_impl_UNLIKELY
+#   define _stz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _stz_impl_LIKELY
+#   define _stz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _stz_impl_UNLIKELY
 # elif defined(__GNUC__)
-#   define _chz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _chz_impl_LIKELY
-#   define _chz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _chz_impl_UNLIKELY
+#   define _stz_impl_EXPECTED(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 1)) _stz_impl_LIKELY
+#   define _stz_impl_ABNORMAL(CONDITION) (__builtin_expect(static_cast<bool>(CONDITION), 0)) _stz_impl_UNLIKELY
 # else
-#   define _chz_impl_EXPECTED(CONDITION) (CONDITION) _chz_impl_LIKELY
-#   define _chz_impl_ABNORMAL(CONDITION) (CONDITION) _chz_impl_UNLIKELY
+#   define _stz_impl_EXPECTED(CONDITION) (CONDITION) _stz_impl_LIKELY
+#   define _stz_impl_ABNORMAL(CONDITION) (CONDITION) _stz_impl_UNLIKELY
 # endif
 
-// support from clang 3.9.0 and GCC 5.1 onward
+// support from clang 3.9.0 and GCC 4.7.3 onward
 # if defined(__clang__)
-#   define _chz_impl_NODISCARD __attribute__((warn_unused_result))
+#   define _stz_impl_NODISCARD __attribute__((warn_unused_result))
 # elif defined(__GNUC__)
-#   define _chz_impl_NODISCARD __attribute__((warn_unused_result))
+#   define _stz_impl_NODISCARD __attribute__((warn_unused_result))
 # else
-#   define _chz_impl_NODISCARD
+#   define _stz_impl_NODISCARD
 # endif
 
 // support from clang 10.0.0 and GCC 10.1 onward
 # if defined(__clang__) and (__clang_major__ >= 10)
 # if __cplusplus < 202002L
-#   define _chz_impl_NODISCARD_REASON(REASON) _chz_impl_CLANG_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
+#   define _stz_impl_NODISCARD_REASON(REASON) _stz_impl_CLANG_IGNORE("-Wc++20-extensions", [[nodiscard(REASON)]])
 # else
-#   define _chz_impl_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+#   define _stz_impl_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
 # endif
 # elif defined(__GNUC__) and (__GNUC__ >= 10)
-#   define _chz_impl_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
+#   define _stz_impl_NODISCARD_REASON(REASON) [[nodiscard(REASON)]]
 # else
-#   define _chz_impl_NODISCARD_REASON(REASON) _chz_impl_NODISCARD
+#   define _stz_impl_NODISCARD_REASON(REASON) _stz_impl_NODISCARD
 # endif
 
-#if defined(_chz_impl_THREADSAFE)
-# undef  _chz_impl_THREADSAFE
-# define _chz_impl_THREADLOCAL         thread_local
-# define _chz_impl_DECLARE_MUTEX(...)  static std::mutex __VA_ARGS__
-# define _chz_impl_DECLARE_LOCK(MUTEX) std::lock_guard<decltype(MUTEX)> _lock(MUTEX)
+#if defined(_stz_impl_THREADSAFE)
+# undef  _stz_impl_THREADSAFE
+# define _stz_impl_THREADLOCAL         thread_local
+# define _stz_impl_DECLARE_MUTEX(...)  static std::mutex __VA_ARGS__
+# define _stz_impl_DECLARE_LOCK(MUTEX) std::lock_guard<decltype(MUTEX)> _lock(MUTEX)
 #else
-# define _chz_impl_THREADLOCAL
-# define _chz_impl_DECLARE_MUTEX(...)
-# define _chz_impl_DECLARE_LOCK(MUTEX)
+# define _stz_impl_THREADLOCAL
+# define _stz_impl_DECLARE_MUTEX(...)
+# define _stz_impl_DECLARE_LOCK(MUTEX)
 #endif
 
   // clock used to measure time
@@ -189,6 +191,8 @@ namespace chz
   >::type;
 #endif
 
+    struct _backdoor;
+
     template<Unit unit, unsigned n_decimals>
     class _time
     {
@@ -196,54 +200,55 @@ namespace chz
       const std::chrono::nanoseconds nanoseconds;
 
       template<Unit unit_, unsigned n_decimals_ = n_decimals>
-      auto format() const noexcept -> const _time<unit_, n_decimals_>&
+      auto style() const noexcept -> const _time<unit_, n_decimals_>&
       {
+        static_assert(n_decimals <= 4, "style: too many decimals requested.");
         return reinterpret_cast<const _time<unit_, n_decimals_>&>(*this);
       }
 
       template<unsigned n_decimals_, Unit unit_ = unit>
-      auto format() const noexcept -> const _time<unit_, n_decimals_>&
+      auto style() const noexcept -> const _time<unit_, n_decimals_>&
       {
+        static_assert(n_decimals <= 4, "style: too many decimals requested.");
         return reinterpret_cast<const _time<unit_, n_decimals_>&>(*this);
       }
     };
 
-    _chz_impl_DECLARE_MUTEX(_out_mtx);
+    _stz_impl_DECLARE_MUTEX(_out_mtx);
 
     template<Unit>
     struct _unit_helper;
 
-#   define _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(UNIT, LABEL, FACTOR) \
+#   define _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(UNIT, LABEL, FACTOR) \
       template<>                                                          \
       struct _unit_helper<UNIT>                                           \
       {                                                                   \
-        static constexpr const char*        label  = LABEL;               \
-        static constexpr unsigned long long factor = FACTOR;              \
+        static constexpr const char*         label  = LABEL;              \
+        static constexpr unsigned long long  factor = FACTOR;             \
+        static constexpr double             ifactor = 1.0/FACTOR;         \
       }
     
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ns,  "ns",  1);
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::us,  "us",  1000);
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ms,  "ms",  1000000);
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::s,   "s",   1000000000);
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::min, "min", 60000000000);
-    _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::h,   "h",   3600000000000);
-
-#   undef _chz_impl_MAKE_UNIT_HELPER_SPECIALIZATION
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ns,  "ns",  1);
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::us,  "us",  1000);
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::ms,  "ms",  1000000);
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::s,   "s",   1000000000);
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::min, "min", 60000000000);
+    _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION(Unit::h,   "h",   3600000000000);
+#   undef _stz_impl_MAKE_UNIT_HELPER_SPECIALIZATION
 
     template<Unit unit, unsigned n_decimals>
     auto _time_as_cstring(const _time<unit, n_decimals> time_) noexcept -> const char*
     {
-      static_assert(n_decimals <= 3, "_impl::_time_as_string: too many decimals requested");
+      static _stz_impl_THREADLOCAL char buffer[32];
 
-      static _chz_impl_THREADLOCAL char buffer[32];
-
-      const auto ajusted_time = static_cast<double>(time_.nanoseconds.count())/_unit_helper<unit>::factor;
+      const double ajusted_time = static_cast<double>(time_.nanoseconds.count()) * _unit_helper<unit>::ifactor;
 
       std::sprintf(buffer,
-        n_decimals == 0 ? "%.0f %s"
-      : n_decimals == 1 ? "%.1f %s"
-      : n_decimals == 2 ? "%.2f %s"
-      :                   "%.3f %s",
+        (n_decimals == 0) ? "%.0f %s"
+      : (n_decimals == 1) ? "%.1f %s"
+      : (n_decimals == 2) ? "%.2f %s"
+      : (n_decimals == 3) ? "%.3f %s"
+      :                     "%.4f %s",
       ajusted_time, _unit_helper<unit>::label);
 
       return buffer;
@@ -253,13 +258,13 @@ namespace chz
     auto _time_as_cstring(const _time<Unit::automatic, n_decimals> time_) noexcept -> const char*
     {
       // 10 h < duration
-      if _chz_impl_ABNORMAL(time_.nanoseconds.count() > 36000000000000)
+      if _stz_impl_ABNORMAL(time_.nanoseconds.count() > 36000000000000)
       {
         return _time_as_cstring(_time<Unit::h, n_decimals>{time_.nanoseconds});
       }
 
       // 10 min < duration <= 10 h
-      if _chz_impl_ABNORMAL(time_.nanoseconds.count() > 600000000000)
+      if _stz_impl_ABNORMAL(time_.nanoseconds.count() > 600000000000)
       {
         return _time_as_cstring(_time<Unit::min, n_decimals>{time_.nanoseconds});
       }
@@ -295,15 +300,15 @@ namespace chz
     template<Unit unit, unsigned n_decimals>
     auto _format_time(const _time<unit, n_decimals> time_, std::string&& fmt_) noexcept -> std::string
     {
-      static const std::string unit_specifiers[] = {"%ns", "%us", "%ms", "%s", "%min", "%h"};
+      constexpr const char* specifiers[] = {"%ms", "%us", "%s", "%ns", "%min", "%h"};
 
-      for (const auto& unit_specifier : unit_specifiers)
+      for (const std::string specifier : specifiers)
       {
-        auto position = fmt_.rfind(unit_specifier);
+        auto position = fmt_.rfind(specifier);
         while (position != std::string::npos)
         {
-          fmt_.replace(position, unit_specifier.length(), _time_as_cstring(time_));
-          position = fmt_.find(unit_specifier);
+          fmt_.replace(position, specifier.length(), _time_as_cstring(time_));
+          position = fmt_.find(specifier);
         }
       }
 
@@ -311,7 +316,8 @@ namespace chz
     }
 
     template<Unit unit, unsigned n_decimals>
-    auto _format_lap(const _time<unit, n_decimals> time_, std::string&& fmt_, const unsigned iter_) noexcept -> std::string
+    auto _split_fmt(const _time<unit, n_decimals> time_, std::string&& fmt_, const unsigned iter_) noexcept
+      -> std::string
     {
       auto position = fmt_.find("%#");
       while (position != std::string::npos)
@@ -324,7 +330,8 @@ namespace chz
     }
 
     template<Unit unit, unsigned n_decimals>
-    auto _format_tot(const _time<unit, n_decimals> time_, std::string&& fmt_, unsigned n_iters_) noexcept -> std::string
+    auto _total_fmt(const _time<unit, n_decimals> time_, std::string&& fmt_, unsigned n_iters_) noexcept
+      -> std::string
     {
       fmt_ = _format_time(time_, std::move(fmt_));
 
@@ -335,7 +342,7 @@ namespace chz
         position = fmt_.find("%D");
       }
 
-      if _chz_impl_ABNORMAL(n_iters_ == 0)
+      if _stz_impl_ABNORMAL(n_iters_ == 0)
       {
         n_iters_ = 1;
       }
@@ -343,28 +350,29 @@ namespace chz
       return _format_time(_time<unit, 3>{time_.nanoseconds/n_iters_}, std::move(fmt_));
     }
 
-    struct _backdoor;
+    template<typename R, typename P>
+    constexpr
+    bool _is_pos(const std::chrono::duration<R, P> duration_) noexcept
+    {
+      return duration_.count() > 0;
+    }
+
+    template<typename I>
+    constexpr
+    bool _is_pos(const I integer_) noexcept
+    {
+      return integer_ > 0;
+    }
   }
 //----------------------------------------------------------------------------------------------------------------------
-# undef  CHZ_MEASURE
-# define CHZ_MEASURE(...)                         _chz_impl_MEASURE_PROX(__LINE__,    __VA_ARGS__)
-# define _chz_impl_MEASURE_PROX(line_number, ...) _chz_impl_MEASURE_IMPL(line_number, __VA_ARGS__)
-# define _chz_impl_MEASURE_IMPL(line_number, ...)                  \
-    for (chz::Measure _chz_impl_measure##line_number{__VA_ARGS__}; \
-      chz::_impl::_backdoor::good(_chz_impl_measure##line_number); \
-      chz::_impl::_backdoor::next(_chz_impl_measure##line_number))
-
   class Stopwatch
   {
-    class _guard;
-  public:    
-    _chz_impl_NODISCARD_REASON("lap: not using the return value makes no sens")
-    inline // display and return lap time
-    auto lap() noexcept -> _impl::_time<Unit::automatic, 0>;
-
-    _chz_impl_NODISCARD_REASON("split: not using the return value makes no sens")
-    inline // display and return split time
+  public:
+    inline // return split time
     auto split() noexcept -> _impl::_time<Unit::automatic, 0>;
+
+    inline // return total time
+    auto total() noexcept -> _impl::_time<Unit::automatic, 0>;
 
     inline // reset measured times
     void reset() noexcept;
@@ -372,22 +380,27 @@ namespace chz
     inline // pause time measurement
     void pause() noexcept;
 
-    inline // unpause time measurement
-    void unpause() noexcept;
+    inline // resume time measurement
+    void start() noexcept;
 
-    inline // RAII-style scoped pause/unpause
-    auto guard() noexcept -> _guard;
+    class Guard;
+
+    inline // RAII-style scoped pause/start
+    auto avoid() noexcept -> Guard;
+    
+    constexpr
+    Stopwatch() noexcept = default;
     
   private:
-    bool                      _is_paused    = false;
-    std::chrono::nanoseconds  _duration_tot = {};
-    std::chrono::nanoseconds  _duration_lap = {};
-    _impl::_clock::time_point _previous     = _impl::_clock::now();
+    bool                      _paused         = false;
+    std::chrono::nanoseconds  _duration_total = {};
+    std::chrono::nanoseconds  _duration_split = {};
+    _impl::_clock::time_point _previous       = _impl::_clock::now();
   };
-
+//----------------------------------------------------------------------------------------------------------------------
   class Measure
   {
-    class _view;
+    class Iteration;
   public:
     constexpr // measure one iteration
     Measure() noexcept = default;
@@ -401,98 +414,76 @@ namespace chz
     inline // measure iterations with custom iteration/total message
     Measure(unsigned iterations, const char* iteration_format, const char* total_format) noexcept;
 
+    inline // measure one iteration with custom total message
+    Measure(const char* total_format) noexcept;
+
+    inline // measure iterations with custom total message
+    Measure(const char* total_format, unsigned iterations) noexcept;
+
     inline // pause measurement
     void pause() noexcept;
 
-    inline // unpause measurement
-    void unpause() noexcept;
+    inline // resume measurement
+    void start() noexcept;
 
-    inline // scoped pause/unpause of measurement
-    auto guard() noexcept -> decltype(Stopwatch().guard());
+    inline // scoped pause/start of measurement
+    auto avoid() noexcept -> Stopwatch::Guard;
 
   private:
-    const unsigned _iterations  = 1;
-    unsigned       _iters_left  = _iterations;
-    const char*    _iter_format = nullptr;
-    const char*    _tot_format  = "total elapsed time: %ms";
-    Stopwatch      _stopwatch;
-    class _iter;
+    const unsigned    _iterations = 1;
+    unsigned          _remaining  = _iterations;
+    const char* const _split_fmt  = nullptr;
+    const char* const _total_fmt  = "total elapsed time: %ms";
+    Stopwatch         _stopwatch;
+    class _iterator;
   public:
-    inline _iter begin()     noexcept;
-    inline _iter end() const noexcept;
+    inline auto begin()     noexcept -> _iterator;
+    inline auto end() const noexcept -> _iterator;
   private:
-    inline _view view() noexcept;
-    inline void  next() noexcept;
-    inline bool  good() noexcept;
-  friend _impl::_backdoor;
+    inline auto view() noexcept -> Iteration;
+    inline bool good() noexcept;
+    inline void next() noexcept;
+    friend _impl::_backdoor;
   };
-
-  class Measure::_view final
+//----------------------------------------------------------------------------------------------------------------------
+  class Measure::Iteration final
   {
     friend Measure;
   public:
     // current measurement iteration
-    const unsigned iteration;
+    const unsigned value;
 
     inline // pause measurements
     void pause() noexcept;
 
-    inline // unpause measurement
-    void unpause() noexcept;
+    inline // resume measurement
+    void start() noexcept;
 
-    inline // scoped pause/unpause of measurement
-    auto guard() noexcept -> decltype(Stopwatch().guard());
+    inline // scoped pause/start of measurement
+    auto avoid() noexcept -> Stopwatch::Guard;
   private:
-    inline _view(unsigned current_iteration, Measure* measurement) noexcept;
+    inline Iteration(unsigned current_iteration, Measure* measurement) noexcept;
     Measure* const _measurement;
   };
-
-  template<Unit unit>
-  void sleep(const unsigned amount_) noexcept
+//----------------------------------------------------------------------------------------------------------------------
+  class Stopwatch::Guard final
   {
-    const auto span = std::chrono::nanoseconds{_impl::_unit_helper<unit>::factor * amount_};
-    const auto goal = span + _impl::_clock::now();
-    while (_impl::_clock::now() < goal);
-  }
+    friend Stopwatch;
+  private:
+    Stopwatch* const _stopwatch;
 
-  template<>
-  void sleep<Unit::automatic>(unsigned) noexcept = delete;
+    Guard(Stopwatch* const stopwatch_) noexcept :
+      _stopwatch(stopwatch_)
+    {
+      _stopwatch->pause();
+    }
 
-# undef  CHZ_ONLY_EVERY
-# define CHZ_ONLY_EVERY(MS)                  _chz_impl_ONLY_EVERY_PROX(__LINE__, MS)
-# define _chz_impl_ONLY_EVERY_PROX(line, MS) _chz_impl_ONLY_EVERY_IMPL(line,     MS)
-# define _chz_impl_ONLY_EVERY_IMPL(line, MS)                                             \
-    if ([]{                                                                              \
-      static_assert(MS > 0, "CHZ_ONLY_EVERY: 'MS' must be a non-zero positive number."); \
-      static auto _chz_impl_prev##line = chz::_impl::_clock::time_point{};               \
-      const  auto _chz_impl_goal##line = std::chrono::nanoseconds{(MS)*1000000};         \
-      if ((chz::_impl::_clock::now() - _chz_impl_prev##line) > _chz_impl_goal##line)     \
-      {                                                                                  \
-        _chz_impl_prev##line = chz::_impl::_clock::now();                                \
-        return false;                                                                    \
-      }                                                                                  \
-      return true;                                                                       \
-    }()) {} else
-
-# undef  CHZ_LOOP_FOR
-# define CHZ_LOOP_FOR(N)                  _chz_impl_LOOP_FOR_PROX(__LINE__, N)
-# define _chz_impl_LOOP_FOR_PROX(line, N) _chz_impl_LOOP_FOR_IMPL(line,     N)
-# define _chz_impl_LOOP_FOR_IMPL(line, N)                                            \
-    for (unsigned long long _chz_impl_loop_for##line = [&]{                          \
-      static_assert(N > 0, "CHZ_LOOP_FOR: 'N' must be a non-zero positive number."); \
-      return N; }(); _chz_impl_loop_for##line; --_chz_impl_loop_for##line)
-
-  
-# undef  CHZ_BREAK_AFTER
-# define CHZ_BREAK_AFTER(N)                  _chz_impl_BREAK_AFTER_PROX(__LINE__, N)
-# define _chz_impl_BREAK_AFTER_PROX(line, N) _chz_impl_BREAK_AFTER_IMPL(line,     N)
-# define _chz_impl_BREAK_AFTER_IMPL(line, N)                                            \
-    if ([]{                                                                             \
-      static_assert(N > 0, "CHZ_BREAK_AFTER: 'N' must be a non-zero positive number."); \
-      static unsigned long long _chz_impl_break_after##line = N;                        \
-      if (_chz_impl_break_after##line == 0) _chz_impl_break_after##line = N;            \
-      return --_chz_impl_break_after##line;                                             \
-    }()) {} else break
+  public:
+    ~Guard() noexcept
+    {
+      _stopwatch->start();
+    }
+  };
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
@@ -512,31 +503,171 @@ namespace chz
     };
   }
 //----------------------------------------------------------------------------------------------------------------------
-  class Stopwatch::_guard final
+  template<Unit unit>
+  void sleep(const unsigned long long amount_) noexcept
   {
-    friend Stopwatch;
-  private:
-    Stopwatch* const _stopwatch;
+    const auto span = std::chrono::nanoseconds{_impl::_unit_helper<unit>::factor * amount_};
+    const auto goal = span + _impl::_clock::now();
+    while (_impl::_clock::now() < goal);
+  }
 
-    _guard(Stopwatch* const stopwatch_) noexcept :
-      _stopwatch(stopwatch_)
-    {
-      _stopwatch->pause();
-    }
+  template <typename R, typename P>
+  void sleep(const std::chrono::duration<R, P> duration_) noexcept
+  {
+    const auto goal = _impl::_clock::now() + duration_;
+    while (_impl::_clock::now() < goal);
+  }
 
-  public:
-    ~_guard() noexcept
-    {
-      _stopwatch->unpause();
-    }
-  };
+  template<>
+  void sleep<Unit::automatic>(unsigned long long) noexcept = delete;
 //----------------------------------------------------------------------------------------------------------------------
-  class Measure::_iter final
+# undef STZ_MEASURE_BLOCK
+# define _stz_impl_MEASURE_BLOCK_IMPL(LINE, ...)                               \
+    for (stz::Measure _stz_impl_MEASURE_BLOCK##LINE{__VA_ARGS__};              \
+      stz::chronometro::_impl::_backdoor::good(_stz_impl_MEASURE_BLOCK##LINE); \
+      stz::chronometro::_impl::_backdoor::next(_stz_impl_MEASURE_BLOCK##LINE))
+# define _stz_impl_MEASURE_BLOCK_PRXY(LINE, ...) _stz_impl_MEASURE_BLOCK_IMPL(LINE, __VA_ARGS__)
+# define STZ_MEASURE_BLOCK(...) _stz_impl_MEASURE_BLOCK_PRXY(__LINE__, __VA_ARGS__)
+//----------------------------------------------------------------------------------------------------------------------
+# undef  STZ_ONLY_EVERY_MS
+# define STZ_ONLY_EVERY_MS(MS)                                                    \
+    if ([&]() -> bool {                                                           \
+      static_assert(stz::chronometro::_impl::_is_pos(MS),                         \
+        "STZ_ONLY_EVERY_MS: 'MS' must be a non-zero positive number.");           \
+      constexpr auto _stz_impl_DIFF = std::chrono::nanoseconds(MS*1000000);       \
+      static stz::chronometro::_impl::_clock::time_point _stz_impl_GOAL = {};     \
+      if (stz::chronometro::_impl::_clock::now() > _stz_impl_GOAL)                \
+      {                                                                           \
+        _stz_impl_GOAL = stz::chronometro::_impl::_clock::now() + _stz_impl_DIFF; \
+        return false;                                                             \
+      }                                                                           \
+      return true;                                                                \
+    }()) {} else
+//----------------------------------------------------------------------------------------------------------------------
+# undef  STZ_ONLY_EVERY_N
+# define _stz_impl_ONLY_EVERY_N_IMPL1(N)                                             \
+    if ([&]() -> bool {                                                              \
+      static_assert(N > 0, "ONLY_EVERY_N: 'N' must be a non-zero positive number."); \
+      static unsigned long long _stz_impl_N = N;                                     \
+      if (++_stz_impl_N >= (N))                                                      \
+      {                                                                              \
+        _stz_impl_N = 0;                                                             \
+        return false;                                                                \
+      }                                                                              \
+      return true;                                                                   \
+    }()) {} else
+# define _stz_impl_ONLY_EVERY_N_IMPL2(N, OFFSET)                                           \
+    if ([&]() -> bool {                                                                    \
+      static_assert(N > 0,       "ONLY_EVERY_N: 'N' must be a non-zero positive number."); \
+      static_assert(OFFSET >= 0, "ONLY_EVERY_N: 'OFFSET' must be a positive number.");     \
+      static unsigned long long _stz_impl_N = N - (OFFSET) - 1;                            \
+      if (++_stz_impl_N >= (N))                                                            \
+      {                                                                                    \
+        _stz_impl_N = 0;                                                                   \
+        return false;                                                                      \
+      }                                                                                    \
+      return true;                                                                         \
+    }()) {} else
+# define _stz_impl_ONLY_EVERY_N_PRXY(_1, _2, N_PARAMS, ...) _stz_impl_ONLY_EVERY_N_IMPL##N_PARAMS
+# define STZ_ONLY_EVERY_N(...) _stz_impl_ONLY_EVERY_N_PRXY(__VA_ARGS__, 2, 1, _)(__VA_ARGS__)
+//----------------------------------------------------------------------------------------------------------------------
+# undef  STZ_LOOP_FOR_N
+# define _stz_impl_LOOP_FOR_N_IMPL(LINE, N)                                        \
+    for (unsigned long long _stz_impl_LOOP_FOR_N##LINE = [&]{                      \
+      static_assert(N > 0, "LOOP_FOR_N: 'N' must be a non-zero positive number."); \
+      return N; }(); _stz_impl_LOOP_FOR_N##LINE; --_stz_impl_LOOP_FOR_N##LINE)
+# define _stz_impl_LOOP_FOR_N_PRXY(LINE, N) _stz_impl_LOOP_FOR_N_IMPL(LINE, N)
+# define STZ_LOOP_FOR_N(N) _stz_impl_LOOP_FOR_N_PRXY(__LINE__, N)
+//----------------------------------------------------------------------------------------------------------------------  
+# undef  STZ_BREAK_AFTER_N
+# define STZ_BREAK_AFTER_N(N)                                                         \
+    if ([]{                                                                           \
+      static_assert(N > 0, "BREAK_AFTER_N: 'N' must be a non-zero positive number."); \
+      static unsigned long long _stz_impl_BREAK_AFTER_N = N;                          \
+      if (_stz_impl_BREAK_AFTER_N == 0) _stz_impl_BREAK_AFTER_N = N;                  \
+      return --_stz_impl_BREAK_AFTER_N;                                               \
+    }()) {} else break
+//----------------------------------------------------------------------------------------------------------------------
+  _stz_impl_NODISCARD_REASON("split: not using the return value makes no sens.")
+  auto Stopwatch::split() noexcept -> _impl::_time<Unit::automatic, 0>
+  {
+    const auto now = _impl::_clock::now();
+
+    auto split_duration = _duration_split;
+    _duration_split     = {};
+
+    if _stz_impl_EXPECTED(not _paused)
+    {
+      _duration_total += now - _previous;
+      split_duration  += now - _previous;
+
+      _previous = _impl::_clock::now();
+    }
+
+    return _impl::_time<Unit::automatic, 0>{split_duration};
+  }
+  
+  _stz_impl_NODISCARD_REASON("total: not using the return value makes no sens.")
+  auto Stopwatch::total() noexcept -> _impl::_time<Unit::automatic, 0>
+  {
+    const auto now = _impl::_clock::now();
+
+    auto total_duration = _duration_total;
+
+    if _stz_impl_EXPECTED(not _paused)
+    {
+      total_duration += now - _previous;
+
+      _duration_split = {};
+      _duration_total = {};
+    }
+
+    return _impl::_time<Unit::automatic, 0>{total_duration};
+  }
+
+  void Stopwatch::reset() noexcept
+  {
+    _duration_total = {};
+    _duration_split = {};
+
+    if (_paused) return;
+    
+    _previous = _impl::_clock::now();
+  }
+
+  void Stopwatch::pause() noexcept
+  {
+    const auto now = _impl::_clock::now();
+
+    if _stz_impl_ABNORMAL(_paused) return;
+
+    _paused = true;
+
+    _duration_total += now - _previous;
+    _duration_split += now - _previous;
+  }
+
+  void Stopwatch::start() noexcept
+  {
+    if _stz_impl_EXPECTED(_paused)
+    {
+      _paused = false;
+
+      _previous = _impl::_clock::now();
+    }
+  }
+
+  auto Stopwatch::avoid() noexcept -> Guard
+  {
+    return Guard(this);
+  }
+//----------------------------------------------------------------------------------------------------------------------
+  class Measure::_iterator final
   {
   public:
-    constexpr _iter() noexcept = default;
+    constexpr _iterator() noexcept = default;
 
-    _iter(Measure* const measure_) noexcept :
+    _iterator(Measure* const measure_) noexcept :
       _measure(measure_)
     {}
 
@@ -545,12 +676,12 @@ namespace chz
       _measure->next();
     }
 
-    bool operator!=(const _iter&) const noexcept
+    bool operator!=(const _iterator&) const noexcept
     {
       return _measure->good();
     }
 
-    _view operator*() const noexcept
+    Iteration operator*() const noexcept
     {
       return _measure->view();
     }
@@ -558,96 +689,32 @@ namespace chz
     Measure* const _measure = nullptr;
   };
 //----------------------------------------------------------------------------------------------------------------------
-  auto Stopwatch::lap() noexcept -> _impl::_time<Unit::automatic, 0>
-  {
-    const auto now = _impl::_clock::now();
-
-    auto lap_duration = _duration_lap;
-    _duration_lap     = {};
-
-    if _chz_impl_EXPECTED(not _is_paused)
-    {
-      _duration_tot += now - _previous;
-      lap_duration  += now - _previous;
-
-      _previous = _impl::_clock::now(); // start measurement from here
-    }
-
-    return _impl::_time<Unit::automatic, 0>{lap_duration};
-  }
-  
-  auto Stopwatch::split() noexcept -> _impl::_time<Unit::automatic, 0>
-  {
-    const auto now = _impl::_clock::now();
-
-    auto tot_duration = _duration_tot;
-
-    if _chz_impl_EXPECTED(not _is_paused)
-    {
-      tot_duration += now - _previous;
-
-      _duration_lap = {};
-      _duration_tot = {};
-    }
-
-    return _impl::_time<Unit::automatic, 0>{tot_duration};
-  }
-
-  void Stopwatch::reset() noexcept
-  {
-    _duration_tot = {};
-    _duration_lap = {};
-
-    // hot reset if unpaused
-    if (not _is_paused)
-    {
-      _previous = _impl::_clock::now(); // start measurement from here
-    }
-  }
-
-  void Stopwatch::pause() noexcept
-  {
-    const auto now = _impl::_clock::now();
-
-    if _chz_impl_EXPECTED(not _is_paused)
-    {
-      _is_paused = true;
-
-      _duration_tot += now - _previous;
-      _duration_lap += now - _previous;
-    }
-  }
-
-  void Stopwatch::unpause() noexcept
-  {
-    if _chz_impl_EXPECTED(_is_paused)
-    {
-      _is_paused = false;
-
-      _previous  = _impl::_clock::now(); // start measurement from here
-    }
-  }
-
-  auto Stopwatch::guard() noexcept -> _guard
-  {
-    return _guard(this);
-  }
-//----------------------------------------------------------------------------------------------------------------------
   Measure::Measure(const unsigned iterations_) noexcept :
     _iterations(iterations_),
-    _tot_format((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
+    _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
   {}
 
   Measure::Measure(const unsigned iterations_, const char* const iteration_format_) noexcept :
     _iterations(iterations_),
-    _iter_format((iteration_format_[0] == '\0') ? nullptr : iteration_format_),
-    _tot_format((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
+    _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr),
+    _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
   {}
 
-  Measure::Measure(const unsigned iterations_, const char* const iteration_format_, const char* const total_format_) noexcept :
+  Measure::Measure(
+    const unsigned iterations_, const char* const iteration_format_, const char* const total_format_
+  ) noexcept :
     _iterations(iterations_),
-    _iter_format((iteration_format_[0] == '\0') ? nullptr : iteration_format_),
-    _tot_format((total_format_[0] == '\0') ? nullptr : total_format_)
+    _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr),
+    _total_fmt(total_format_     && *total_format_     ? total_format_     : nullptr)
+  {}
+
+  Measure::Measure(const char* const total_format_) noexcept :
+    _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
+  {}
+
+  Measure::Measure(const char* const total_format_, const unsigned iterations_) noexcept :
+    _iterations(iterations_),
+    _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
   {}
 
   void Measure::pause() noexcept
@@ -655,101 +722,149 @@ namespace chz
     _stopwatch.pause();
   }
 
-  void Measure::unpause() noexcept
+  void Measure::start() noexcept
   {
-    _stopwatch.unpause();
+    _stopwatch.start();
   }
 
-  auto Measure::view() noexcept -> _view
+  auto Measure::avoid() noexcept -> Stopwatch::Guard
   {
-    return _view(_iterations - _iters_left, this);
+    return _stopwatch.avoid();
   }
 
-  void Measure::next() noexcept
+  auto Measure::begin() noexcept -> _iterator
   {
-    _stopwatch.pause();
-    const auto iter_duration = _stopwatch.lap();
+    _remaining = _iterations;
 
-    if (_iter_format)
-    {
-      _chz_impl_DECLARE_LOCK(_impl::_out_mtx);
-      _io::out << _impl::_format_lap(iter_duration, _iter_format, _iterations - _iters_left) << std::endl;
-    }
+    _stopwatch.start();
+    _stopwatch.reset();
 
-    --_iters_left;
-    _stopwatch.unpause();
+    return _iterator(this);
+  }
+
+  auto Measure::end() const noexcept -> _iterator
+  {
+    return _iterator();
+  }
+
+  auto Measure::view() noexcept -> Iteration
+  {
+    return Iteration(_iterations - _remaining, this);
   }
   
   bool Measure::good() noexcept
   {
-    _stopwatch.pause();
-    if _chz_impl_EXPECTED(_iters_left)
+    const auto avoid = _stopwatch.avoid();
+
+    if _stz_impl_EXPECTED(_remaining)
     {
-      _stopwatch.unpause();
       return true;
     }
 
-    const auto duration = _stopwatch.split();
+    const auto duration = _stopwatch.total();
 
-    if _chz_impl_EXPECTED(_tot_format)
+    if _stz_impl_EXPECTED(_total_fmt)
     {
-      _chz_impl_DECLARE_LOCK(_impl::_out_mtx);
-      _io::out << _impl::_format_tot(duration, _tot_format, _iterations) << std::endl;
+      _stz_impl_DECLARE_LOCK(_impl::_out_mtx);
+      _io::out << _impl::_total_fmt(duration, _total_fmt, _iterations) << std::endl;
     }
 
     return false;
   }
+
+  void Measure::next() noexcept
+  {
+    const auto avoid = _stopwatch.avoid();
+    const auto split = _stopwatch.split();
+
+    if (_split_fmt)
+    {
+      _stz_impl_DECLARE_LOCK(_impl::_out_mtx);
+      _io::out << _impl::_split_fmt(split, _split_fmt, _iterations - _remaining) << std::endl;
+    }
+
+    --_remaining;
+  }
 //----------------------------------------------------------------------------------------------------------------------
-  Measure::_view::_view(const unsigned current_iteration_, Measure* const measurement_) noexcept :
-    iteration(current_iteration_),
+  Measure::Iteration::Iteration(const unsigned current_iteration_, Measure* const measurement_) noexcept :
+    value(current_iteration_),
     _measurement(measurement_)
   {}
 
-  void Measure::_view::pause() noexcept
+  void Measure::Iteration::pause() noexcept
   {
     _measurement->pause();
   }
 
-  void Measure::_view::unpause() noexcept
+  void Measure::Iteration::start() noexcept
   {
-    _measurement->unpause();
+    _measurement->start();
   }
 
-  auto Measure::guard() noexcept -> decltype(Stopwatch().guard())
+  auto Measure::Iteration::avoid() noexcept -> Stopwatch::Guard
   {
-    return _stopwatch.guard();
-  }
-
-  auto Measure::begin() noexcept -> _iter
-  {
-    _iters_left = _iterations;
-
-    _stopwatch.unpause();
-    _stopwatch.reset();
-
-    return _iter(this);
-  }
-
-  auto Measure::end() const noexcept -> _iter
-  {
-    return _iter();
-  }
-
-  auto Measure::_view::guard() noexcept -> decltype(Stopwatch().guard())
-  {
-    return _measurement->guard();
+    return _measurement->avoid();
   }
 }
 //----------------------------------------------------------------------------------------------------------------------
-# undef _chz_impl_PRAGMA
-# undef _chz_impl_CLANG_IGNORE
-# undef _chz_impl_LIKELY
-# undef _chz_impl_UNLIKELY
-# undef _chz_impl_EXPECTED
-# undef _chz_impl_ABNORMAL
-# undef _chz_impl_NODISCARD
-# undef _chz_impl_NODISCARD_REASON
-# undef _chz_impl_THREADLOCAL
-# undef _chz_impl_DECLARE_MUTEX
-# undef _chz_impl_DECLARE_LOCK
+  inline namespace _literals
+  {
+# if not defined(_stz_impl_LITERALS_FREQUENCY)
+#   define _stz_impl_LITERALS_FREQUENCY
+    constexpr
+    auto operator""_mHz(const long double frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000000000/frequency_));
+    }
+
+    constexpr
+    auto operator""_mHz(const unsigned long long frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000000000/frequency_));
+    }
+
+    constexpr
+    auto operator""_Hz(const long double frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000000/frequency_));
+    }
+
+    constexpr
+    auto operator""_Hz(const unsigned long long frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000000/frequency_));
+    }
+    
+    constexpr
+    auto operator""_kHz(const long double frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000/frequency_));
+    }
+
+    constexpr
+    auto operator""_kHz(const unsigned long long frequency_) -> std::chrono::nanoseconds
+    {
+      return std::chrono::nanoseconds(static_cast<std::chrono::nanoseconds::rep>(1000000/frequency_));
+    }
+# endif
+  }
+//----------------------------------------------------------------------------------------------------------------------
+}
+//----------------------------------------------------------------------------------------------------------------------
+# undef _stz_impl_THREADSAFE
+# undef _stz_impl_PRAGMA
+# undef _stz_impl_CLANG_IGNORE
+# undef _stz_impl_LIKELY
+# undef _stz_impl_UNLIKELY
+# undef _stz_impl_EXPECTED
+# undef _stz_impl_ABNORMAL
+# undef _stz_impl_NODISCARD
+# undef _stz_impl_NODISCARD_REASON
+# undef _stz_impl_THREADLOCAL
+# undef _stz_impl_DECLARE_MUTEX
+# undef _stz_impl_DECLARE_LOCK
+//----------------------------------------------------------------------------------------------------------------------
+#else
+#error "stz: Support for ISO C++11 is required."
+#endif
 #endif

@@ -10,14 +10,48 @@
 #include <array>
 
 // serializable data structure
-struct SDS final : public srz::Serializable
+struct SDS final : public stz::Serializable
 {
   uint16_t a;
 
-  SRZ_SERIALIZATION_TRIVIAL(a)
+  STZ_TRIVIAL_SERIALIZATION(a)
 };
 
-struct Something final : public srz::Serializable
+struct SRZ
+{
+  template<typename T>
+  SRZ operator<=(T&& thing) const &
+  {
+    stz::srz::_impl::_serialization::serialization(std::forward<T>(thing));
+    return SRZ();
+  }
+
+  template<typename T>
+  SRZ operator,(T&& thing) const &&
+  {
+    stz::srz::_impl::_serialization::serialization(std::forward<T>(thing));
+    return SRZ();
+  }
+};
+
+struct DRZ
+{
+  template<typename T>
+  DRZ operator<=(T&& thing) const &
+  {
+    stz::srz::_impl::_deserialization::serialization(std::forward<T>(thing));
+    return DRZ();
+  }
+
+  template<typename T>
+  DRZ operator,(T&& thing) const &&
+  {
+    stz::srz::_impl::_deserialization::serialization(std::forward<T>(thing));
+    return DRZ();
+  }
+};
+
+struct Something final : public stz::Serializable
 {
   std::array<uint8_t, 5>                  a;
   std::string                             b;
@@ -32,9 +66,9 @@ struct Something final : public srz::Serializable
   std::queue<int>                         k;
   std::forward_list<int>                  l;
 
-  SRZ_SERIALIZATION_SEQUENCE
+  STZ_SERIALIZATION_SEQUENCE
   (
-    serialization(a, b, c, d, e, f, g, h, i, j, k, l);
+    serialize <= a, b, c, d, e, f, g, h, i, j, k, l;
   )
 };
 
@@ -85,7 +119,7 @@ loop:
   // }
   // std::cout << '\n';
 
-  // std::cout << srz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
+  // std::cout << stz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
   // CHZ_MEASURE(10, "iteration %# took %ms")
   CHZ_LOOP_FOR(100000)
