@@ -94,7 +94,7 @@ int main()
 
 loop:
   // CHZ_MEASURE(10, "iteration %# took %ms")
-  CHZ_LOOP_FOR(100000)
+  STZ_MEASURE_BLOCK(100000)
   serialized = something.serialize();
 
   // std::cout << serialized.size() << '\n';
@@ -122,7 +122,7 @@ loop:
   // std::cout << stz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
   
   // CHZ_MEASURE(10, "iteration %# took %ms")
-  CHZ_LOOP_FOR(100000)
+  STZ_MEASURE_BLOCK(100000)
   decoded.deserialize(serialized.data(), serialized.size());
 
   // std::cout << "a:   " << decoded.a.data() << '\n';

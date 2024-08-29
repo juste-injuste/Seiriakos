@@ -1,13 +1,13 @@
 #include "Seiriakos.hpp"
 
-int test()
+int ODR()
 {
-  struct SomeStruct final : public srz::Serializable
+  struct SomeStruct final : public stz::Serializable
   {
     std::array<float, 5> a;
     std::string          b;
 
-    SRZ_SERIALIZATION_TRIVIAL(a, b)
+    STZ_TRIVIAL_SERIALIZATION(a, b)
   } to_serialize, deserialized;
 
   auto serialized_data = to_serialize.serialize();
