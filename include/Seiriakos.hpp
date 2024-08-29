@@ -64,7 +64,7 @@ with -Wstrict-overflow=3 and above.
 # include <mutex>  // for std::mutex, std::lock_guard
 #endif
 #if defined(STZ_DEBUGGING)
-#if defined (__clang__) or defined(__GNUC__)
+#if defined(__clang__) or defined(__GNUC__)
 # include <cxxabi.h> // for abi::__cxa_demangle
 #endif
 # include <typeinfo> // for typeid
@@ -114,29 +114,27 @@ namespace stz
 inline namespace seiriakos
 //----------------------------------------------------------------------------------------------------------------------
 {
-  class Info;
-
-  // abstract class to add serialization capabilities
-  // class Serializable;
-
   // macro to add .serialize() and .deserialize(...) methods to a class
 # define serialization_methods()
+
+  // macro to implement trivial serialization/deserialization
+# define trivial_serialization(VARIABLE_NAMES, ...)
 
   // macro to implement serialization/deserialization
 # define serialization_sequence(...)
 
-  // macro to implement trivial serialization/deserialization
-# define trivial_serialization(...)
-
   using Bytes = std::vector<uint8_t>;
 
-  template<typename... T>
+  template<typename... type>
   inline // serialize 'things'
-  auto serialize(const T&... things) noexcept -> Bytes;
+  auto serialize(const type&... things) noexcept -> Bytes;
 
-  template<typename... T>
+  template<typename... type>
   inline // deserialize into 'things'
-  Info deserialize(const uint8_t data[], size_t size, T&... things) noexcept;
+  void deserialize(const uint8_t data[], size_t size, type&... things) noexcept;
+
+  template<typename type>
+  type deserialize(const uint8_t data[], size_t size) noexcept;
 
   inline // convert bytes to const char*
   auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*;
@@ -146,59 +144,10 @@ inline namespace seiriakos
     static std::ostream dbg(std::clog.rdbuf()); // debugging
   }
 
-  // macro to implement serialization/deserialization
-# define STZ_SERIALIZATION(...)
-
-  // macro to implement trivial serialization/deserialization
-# define STZ_TRIVIAL_SERIALIZATION(...)
-
 # define SEIRIAKOS_MAJOR   000
 # define SEIRIAKOS_MINOR   000
 # define SEIRIAKOS_PATCH   000
 # define SEIRIAKOS_VERSION ((SEIRIAKOS_MAJOR  * 1000 + SEIRIAKOS_MINOR) * 1000 + SEIRIAKOS_PATCH)
-//----------------------------------------------------------------------------------------------------------------------
-  class Info
-  {
-  public:
-    enum Code : uint_fast8_t
-    {
-      ALL_GOOD           ,
-      MISSING_BYTES      ,
-      EMPTY_BUFFER       ,
-      SEQUENCE_MISMATCH  ,
-      NOT_IMPLEMENTED_YET
-    };
-
-    constexpr
-    Info(Code code) noexcept : 
-      _code(code)
-    {}
-
-    void operator=(Code code) noexcept
-    {
-      if (_code != Info::ALL_GOOD)
-      {
-        _code = code;
-      }
-    }
-
-    constexpr
-    operator Code() const noexcept
-    {
-      return _code;
-    } 
-
-    constexpr
-    const char* description() const
-    {
-      return "text";
-    }
-
-    operator bool() = delete;
-
-  private:
-    Code _code;
-  };
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
@@ -295,9 +244,8 @@ inline namespace seiriakos
 #   define _stz_impl_DECLARE_LOCK(MUTEX)
 # endif
 
-    static _stz_impl_THREADLOCAL Bytes _buffer;
-    static _stz_impl_THREADLOCAL size_t               _front_of_buffer;
-    static _stz_impl_THREADLOCAL Info                 _info = Info::ALL_GOOD;
+    static _stz_impl_THREADLOCAL Bytes  _buffer;
+    static _stz_impl_THREADLOCAL size_t _front_of_buffer;
 
 # if defined(STZ_DEBUGGING)
     template<typename T>
@@ -434,6 +382,7 @@ inline namespace seiriakos
     using _no_sequence = typename std::enable_if<_backdoor::_has_seq<T>() != true>::type;
 
     template<typename T, typename = _if_sequence<T>>
+    constexpr
     void _srz_impl(const T& serializable_) noexcept
     {
       _stz_impl_IDEBUGGING("%s", _underlying_name<T>());
@@ -442,6 +391,7 @@ inline namespace seiriakos
     }
 
     template<typename T, typename = _if_sequence<T>>
+    constexpr
     void _drz_impl(T& serializable_) noexcept
     {
       _stz_impl_IDEBUGGING("%s", _underlying_name<T>());
@@ -468,13 +418,11 @@ inline namespace seiriakos
       _stz_impl_SAFE(
         if _stz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
         {
-          _info = Info::EMPTY_BUFFER;
           return;
         }
 
         if _stz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N_))
         {
-          _info =  Info::MISSING_BYTES;
           return;
         }
       )
@@ -520,7 +468,6 @@ inline namespace seiriakos
       _stz_impl_SAFE(
         if _stz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
         {
-          _info = Info::EMPTY_BUFFER;
           return;
         }
       )
@@ -530,7 +477,6 @@ inline namespace seiriakos
       _stz_impl_SAFE(
         if _stz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
         {
-          _info = Info::MISSING_BYTES;
           return;
         }
       )
@@ -1590,14 +1536,14 @@ inline namespace seiriakos
     }
 
     template<size_t N, typename... T>
-    struct _tuple_serialization
+    struct _tuple_srz
     {
       static inline constexpr
       void implementation(const std::tuple<T...>& tuple) noexcept;
     };
 
     template<typename... T>
-    struct _tuple_serialization<0, T...>
+    struct _tuple_srz<0, T...>
     {
       static inline constexpr
       void implementation(const std::tuple<T...>&) noexcept {}
@@ -1605,10 +1551,10 @@ inline namespace seiriakos
 
     template<size_t N, typename... T>
     constexpr
-    void _tuple_serialization<N, T...>::implementation(const std::tuple<T...>& tuple_) noexcept
+    void _tuple_srz<N, T...>::implementation(const std::tuple<T...>& tuple_) noexcept
     {
       _srz_impl(std::get<sizeof...(T) - N>(tuple_));
-      _tuple_serialization<N-1, T...>::implementation(tuple_);
+      _tuple_srz<N-1, T...>::implementation(tuple_);
     }
 
     template<typename... T>
@@ -1617,18 +1563,18 @@ inline namespace seiriakos
     {
       _stz_impl_IDEBUGGING("std::tuple");
 
-      _tuple_serialization<sizeof...(T), T...>::implementation(tuple_);
+      _tuple_srz<sizeof...(T), T...>::implementation(tuple_);
     }
 
     template<size_t N, typename... T>
-    struct _tuple_deserialization
+    struct _tuple_drz
     {
       static inline constexpr
       void implementation(std::tuple<T...>& tuple) noexcept;
     };
 
     template<typename... T>
-    struct _tuple_deserialization<0, T...>
+    struct _tuple_drz<0, T...>
     {
       static inline constexpr
       void implementation(std::tuple<T...>&) noexcept {}
@@ -1636,10 +1582,10 @@ inline namespace seiriakos
 
     template<size_t N, typename... T>
     constexpr
-    void _tuple_deserialization<N, T...>::implementation(std::tuple<T...>& tuple_) noexcept
+    void _tuple_drz<N, T...>::implementation(std::tuple<T...>& tuple_) noexcept
     {
       _drz_impl(std::get<sizeof...(T) - N>(tuple_));
-      _tuple_deserialization<N-1, T...>::implementation(tuple_);
+      _tuple_drz<N-1, T...>::implementation(tuple_);
     }
 
     template<typename... T>
@@ -1648,7 +1594,7 @@ inline namespace seiriakos
     {
       _stz_impl_IDEBUGGING("std::tuple");
 
-      _tuple_deserialization<sizeof...(T), T...>::implementation(tuple_);
+      _tuple_drz<sizeof...(T), T...>::implementation(tuple_);
     }
   }
 //----------------------------------------------------------------------------------------------------------------------
@@ -1669,83 +1615,39 @@ inline namespace seiriakos
   }
 
   template<typename... T>
-  Info deserialize(const uint8_t data_[], const size_t size_, T&... things_) noexcept
+  void deserialize(const uint8_t data_[], const size_t size_, T&... things_) noexcept
   {
     _stz_impl_DEBUGGING("----deserialization summary:");
 
     _impl::_buffer.assign(data_, data_ + size_);
     _impl::_front_of_buffer = 0;
 
-    _stz_impl_SAFE(
-      _impl::_info = Info::ALL_GOOD;
-    )
-
     _impl::_drz_dispatch(things_...);
 
-    _stz_impl_SAFE(
-      if _stz_impl_EXPECTED(_impl::_info == Info::ALL_GOOD)
-      {
-        if _stz_impl_ABNORMAL(_impl::_front_of_buffer != _impl::_buffer.size())
-        {
-          _impl::_info = Info::SEQUENCE_MISMATCH;
-        }
-      }
-    )
-
     _stz_impl_DEBUGGING("----------------------------");
-
-    return _impl::_info;
   }
 
-  template<typename T>
-  T deserialize(const uint8_t data_[], const size_t size_) noexcept
+  template<typename type>
+  _stz_impl_NODISCARD_REASON("deserialize: ignoring the return value makes no sens.")
+  type deserialize(const uint8_t data_[], const size_t size_) noexcept
   {
-    T thing;
+    type thing;
     
     deserialize(data_, size_, thing);
 
     return thing;
   }
 //----------------------------------------------------------------------------------------------------------------------
-# undef  STZ_SERIALIZE
-# define STZ_SERIALIZE                                                                \
-    auto serialize() const noexcept -> stz::bytes                                     \
-    {                                                                                 \
-      return stz::serialize(*this);                                                   \
-    }                                                                                 \
-    auto deserialize(const uint8_t data_[], const size_t size_) noexcept -> stz::Info \
-    {                                                                                 \
-      return stz::deserialize(data_, size_, *this);                                   \
-    }
-  
-# undef  STZ_SERIALIZATION
-# define STZ_SERIALIZATION(...)                          \
-    private:                                             \
-      friend stz::seiriakos::_impl::_backdoor;           \
-      void _stz_impl_srz_seq() const noexcept            \
-      {                                                  \
-        constexpr stz::seiriakos::_impl::_srz serialize; \
-        __VA_ARGS__                                      \
-      }                                                  \
-      void _stz_impl_drz_seq() noexcept                  \
-      {                                                  \
-        constexpr stz::seiriakos::_impl::_drz serialize; \
-        __VA_ARGS__                                      \
-      }
-      
-# undef  STZ_TRIVIAL_SERIALIZATION
-# define STZ_TRIVIAL_SERIALIZATION(...) STZ_SERIALIZATION(serialize <= __VA_ARGS__;)
-
 # undef  serialization_methods
     constexpr int serialization_methods() noexcept { return 0; }
-# define serialization_methods()                                              \
-    Bytes serialize() const noexcept                                          \
-    {                                                                         \
-      return stz::serialize(*this);                                           \
-    }                                                                         \
-    stz::Info deserialize(const uint8_t data_[], const size_t size_) noexcept \
-    {                                                                         \
-      return stz::deserialize(data_, size_, *this);                           \
+# define serialization_methods()                                         \
+    Bytes serialize() const noexcept                                     \
+    {                                                                    \
+      return stz::serialize(*this);                                      \
+    }                                                                    \
+    void deserialize(const uint8_t data_[], const size_t size_) noexcept \
+    {                                                                    \
+      return stz::deserialize(data_, size_, *this);                      \
     }
 
 # undef  serialization_sequence
