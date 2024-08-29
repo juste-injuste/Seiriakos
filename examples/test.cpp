@@ -1,7 +1,7 @@
-// #define SRZ_DEBUGGING
-#define SRZ_UNSAFE
-#define SRZ_NOT_THREADSAFE
-// #define SRZ_FIXED_LENGHT
+// #define STZ_DEBUGGING
+#define STZ_UNSAFE
+#define STZ_NOT_THREADSAFE
+// #define STZ_FIXED_LENGHT
 #include "Seiriakos.hpp"
 #include "../include/Chronometro.hpp"
 #include <iostream>
@@ -15,40 +15,6 @@ struct SDS final : public stz::Serializable
   uint16_t a;
 
   STZ_TRIVIAL_SERIALIZATION(a)
-};
-
-struct SRZ
-{
-  template<typename T>
-  SRZ operator<=(T&& thing) const &
-  {
-    stz::srz::_impl::_serialization::serialization(std::forward<T>(thing));
-    return SRZ();
-  }
-
-  template<typename T>
-  SRZ operator,(T&& thing) const &&
-  {
-    stz::srz::_impl::_serialization::serialization(std::forward<T>(thing));
-    return SRZ();
-  }
-};
-
-struct DRZ
-{
-  template<typename T>
-  DRZ operator<=(T&& thing) const &
-  {
-    stz::srz::_impl::_deserialization::serialization(std::forward<T>(thing));
-    return DRZ();
-  }
-
-  template<typename T>
-  DRZ operator,(T&& thing) const &&
-  {
-    stz::srz::_impl::_deserialization::serialization(std::forward<T>(thing));
-    return DRZ();
-  }
 };
 
 struct Something final : public stz::Serializable
@@ -66,7 +32,7 @@ struct Something final : public stz::Serializable
   std::queue<int>                         k;
   std::forward_list<int>                  l;
 
-  STZ_SERIALIZATION_SEQUENCE
+  STZ_SERIALIZATION
   (
     serialize <= a, b, c, d, e, f, g, h, i, j, k, l;
   )
@@ -75,7 +41,7 @@ struct Something final : public stz::Serializable
 int main()
 {
   Something something, decoded;
-  std::vector<uint8_t> serialized;
+  std::vector<uint8_t> binary;
   
   something.a    = {'h', 'e', 'a', 'd', '\0'};
   something.b    = "ceci est une string de taille moyenne.";
@@ -92,12 +58,13 @@ int main()
   something.k.push(2);
   something.k.push(3);
 
-loop:
-  // CHZ_MEASURE(10, "iteration %# took %ms")
-  STZ_MEASURE_BLOCK(100000)
-  serialized = something.serialize();
 
-  // std::cout << serialized.size() << '\n';
+loop:
+  // STZ_MEASURE_BLOCK(10, "iteration %# took %ms")
+  STZ_MEASURE_BLOCK(100000)
+  binary = something.serialize();
+  
+  // std::cout << binary.size() << '\n';
 
   // std::cout << "a:   " << something.a.data() << '\n';
   // std::cout << "b:   " << something.b << '\n';
@@ -119,11 +86,11 @@ loop:
   // }
   // std::cout << '\n';
 
-  // std::cout << stz::bytes_as_cstring(serialized.data(), serialized.size()) << '\n';
+  // std::cout << stz::bytes_as_cstring(binary.data(), binary.size()) << '\n';
   
-  // CHZ_MEASURE(10, "iteration %# took %ms")
+  // STZ_MEASURE_BLOCK(10, "iteration %# took %ms")
   STZ_MEASURE_BLOCK(100000)
-  decoded.deserialize(serialized.data(), serialized.size());
+  decoded.deserialize(binary.data(), binary.size());
 
   // std::cout << "a:   " << decoded.a.data() << '\n';
   // std::cout << "b:   " << decoded.b << '\n';

@@ -111,7 +111,7 @@ with -Wstrict-overflow=3 and above.
 //---Seiriakos library--------------------------------------------------------------------------------------------------
 namespace stz
 {
-inline namespace srz
+inline namespace seiriakos
 //----------------------------------------------------------------------------------------------------------------------
 {
   class Info;
@@ -137,7 +137,7 @@ inline namespace srz
   class Serializable;
 
   // macro to implement serialization/deserialization member functions
-# define STZ_SERIALIZATION_SEQUENCE(...)
+# define STZ_SERIALIZATION(...)
 
   inline // print bytes from memory
   auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*;
@@ -386,6 +386,33 @@ inline namespace srz
 #   define _stz_impl_UNSAFE(...)
 #endif
 
+    // template<typename T>
+    // struct _is_serializable final
+    // {
+    // private:
+    //   template<typename T_>
+    //   static
+    //   auto _impl(int) -> decltype
+    //   (
+    //     void(std::declval<T_&>().serialize()),
+    //     void(std::declval<T_&>().deserialize(nullptr, size_t())),
+    //     std::true_type()
+    //   );
+
+    //   template<typename T_>
+    //   static
+    //   auto _impl(...) -> std::false_type;
+
+    // public:
+    //   static constexpr bool value = decltype(_impl<T>(0)){};
+    // };
+
+    // template<typename T>
+    // using _if_serializable = typename std::enable_if<_is_serializable<T>::value == true>::type;
+
+    // template<typename T>
+    // using _no_serializable = typename std::enable_if<_is_serializable<T>::value != true>::type;
+
     template<typename T>
     using _if_not_Serializable = typename std::enable_if<not std::is_base_of<Serializable, T>::value>::type;
 
@@ -437,7 +464,7 @@ inline namespace srz
     static
     void _size_t_serialization_implementation(const size_t size_)
     {
-#   if defined(STZ_FIXED_LENGHT)
+#   if defined(STZ_FIXED_SERIALIZATION)
       _serialization_implementation(size_);
 #   else
       _stz_impl_IDEBUGGING("size_t");
@@ -458,7 +485,7 @@ inline namespace srz
     static
     void _size_t_deserialization_implementation(size_t& size_)
     {
-#   if defined(STZ_FIXED_LENGHT)
+#   if defined(STZ_FIXED_SERIALIZATION)
       _deserialization_implementation(size_);
 #   else
       _stz_impl_IDEBUGGING("size_t");
@@ -699,45 +726,79 @@ inline namespace srz
       return sizeof(T) + _sizeof_things<T_...>();
     }
 
-    inline _stz_impl_CONSTEXPR_CPP14 void _serialize_things() noexcept {}
+    constexpr int _serialize_things() noexcept { return 0; }
 
     template<typename T, typename... T_>
     constexpr
-    void _serialize_things(const T& thing, const T_&... remaining_things) noexcept
+    void _serialize_things(const T& thing_, const T_&... remaining_things_) noexcept
     {
-      _serialization_implementation(thing);
-      _serialize_things(remaining_things...);
+      _serialization_implementation(thing_);
+      _serialize_things(remaining_things_...);
     }
 
-    inline _stz_impl_CONSTEXPR_CPP14 void _deserialize_things() noexcept {}
+    constexpr int _deserialize_things() noexcept { return 0; }
 
     template<typename T, typename... T_>
     constexpr
-    void _deserialize_things(T& thing, T_&... remaining_things) noexcept
+    void _deserialize_things(T& thing_, T_&... remaining_things_) noexcept
     {
-      _deserialization_implementation(thing);
-      _deserialize_things(remaining_things...);
+      _deserialization_implementation(thing_);
+      _deserialize_things(remaining_things_...);
     }
 
-    namespace _serialization
+  struct _serializer
+  {
+    template<typename... T>
+    constexpr
+    _serializer operator()(const T&... things_) const &
     {
-      template<typename... T>
-      constexpr
-      void serialization(const T&... data_) noexcept
-      {
-        _impl::_serialize_things(data_...);
-      }
+      return _serialize_things(things_...), _serializer();
     }
 
-    namespace _deserialization
+    template<typename T>
+    constexpr
+    _serializer operator<=(const T& thing_) const &
     {
-      template<typename... T>
-      constexpr
-      void serialization(T&... data_) noexcept
-      {
-        _impl::_deserialize_things(data_...);
-      }
+      return _serialize_things(thing_), _serializer();
     }
+
+    template<typename T>
+    constexpr
+    _serializer operator,(const T& thing_) const &&
+    {
+      return _serialize_things(thing_), _serializer();
+    }
+
+    template<typename T>
+    void operator,(T) const & = delete;
+  };
+
+  struct _deserializer
+  {
+    template<typename... T>
+    constexpr
+    _deserializer operator()(T&... things_) const &
+    {
+      return _deserialize_things(things_...), _deserializer();
+    }
+
+    template<typename T>
+    constexpr
+    _deserializer operator<=(T& thing_) const &
+    {
+      return _deserialize_things(thing_), _deserializer();
+    }
+
+    template<typename T>
+    constexpr
+    _deserializer operator,(T& thing_) const &&
+    {
+      return _deserialize_things(thing_), _deserializer();
+    }
+
+    template<typename T>
+    void operator,(T) const & = delete;
+  };
 
     struct _backdoor;
   }
@@ -753,10 +814,10 @@ inline namespace srz
     Info deserialize(const uint8_t data[], size_t size) noexcept;
 
   protected:
-    virtual // serialization sequence (provided by the inheriting class via STZ_SERIALIZATION_SEQUENCE)
+    virtual // serialization sequence (provided by the inheriting class via STZ_SERIALIZATION)
     void _serialization_sequence() const noexcept = 0;
 
-    virtual // deserialization sequence (provided by the inheriting class via STZ_SERIALIZATION_SEQUENCE)
+    virtual // deserialization sequence (provided by the inheriting class via STZ_SERIALIZATION)
     void _deserialization_sequence() noexcept = 0;
 
     friend _impl::_backdoor;
@@ -1662,44 +1723,43 @@ inline namespace srz
 
     return _impl::_info;
   }
+
+  template<typename T>
+  T deserialize(const uint8_t data_[], const size_t size_) noexcept
+  {
+    T thing;
+    
+    deserialize(data_, size_, thing);
+
+    return thing;
+  }
 //----------------------------------------------------------------------------------------------------------------------
   auto Serializable::serialize() const noexcept -> std::vector<uint8_t>
   {
-    return stz::serialize(*this);
+    return seiriakos::serialize(*this);
   }
 
   Info Serializable::deserialize(const uint8_t data_[], const size_t size_) noexcept
   {
-    return stz::deserialize(data_, size_, *this);
+    return seiriakos::deserialize(data_, size_, *this);
   }
   
-# undef  STZ_SERIALIZATION_SEQUENCE
-# define STZ_SERIALIZATION_SEQUENCE(...)                        \
-    private:                                                    \
-      void _serialization_sequence() const noexcept override    \
-      {                                                         \
-        using stz::srz::_impl::_serialization::serialization;   \
-        constexpr SRZ serialize;                                          \
-        __VA_ARGS__                                             \
-      }                                                         \
-      void _deserialization_sequence() noexcept override        \
-      {                                                         \
-        using stz::srz::_impl::_deserialization::serialization; \
-        constexpr DRZ serialize;                                          \
-        __VA_ARGS__                                             \
+# undef  STZ_SERIALIZATION
+# define STZ_SERIALIZATION(...)                                   \
+    private:                                                      \
+      void _serialization_sequence() const noexcept override      \
+      {                                                           \
+        constexpr stz::seiriakos::_impl::_serializer serialize;   \
+        __VA_ARGS__                                               \
+      }                                                           \
+      void _deserialization_sequence() noexcept override          \
+      {                                                           \
+        constexpr stz::seiriakos::_impl::_deserializer serialize; \
+        __VA_ARGS__                                               \
       }
       
 # undef  STZ_TRIVIAL_SERIALIZATION
-# define STZ_TRIVIAL_SERIALIZATION(...)                      \
-    private:                                                 \
-      void _serialization_sequence() const noexcept override \
-      {                                                      \
-        stz::srz::_impl::_serialize_things(__VA_ARGS__);     \
-      }                                                      \
-      void _deserialization_sequence() noexcept override     \
-      {                                                      \
-        stz::srz::_impl::_deserialize_things(__VA_ARGS__);   \
-      }
+# define STZ_TRIVIAL_SERIALIZATION(...) STZ_SERIALIZATION(serialize <= __VA_ARGS__;)
 //----------------------------------------------------------------------------------------------------------------------
   auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*
   {
