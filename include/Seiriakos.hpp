@@ -38,7 +38,7 @@ TODO:
 -----description--------------------------------------------------------------------------------------------------------
 
 Seiriakos is a simple and lightweight C++11 (and newer) library that allows you serialize
-and deserialize objects.
+and deserialize base_ptrs.
 
 -----disclosure---------------------------------------------------------------------------------------------------------
 
@@ -54,7 +54,7 @@ with -Wstrict-overflow=3 and above.
 #include <cstddef>     // for size_t
 #include <cstdint>     // for uint_fast8_t
 #include <vector>      // for std::vector
-#include <type_traits> // for std::enable_if, std::is_*
+#include <type_traits> // for std::enable_if, std::is_*, std::remove_pointer
 #include <iostream>    // for std::clog
 #include <cstring>     // for std::memcpy
 //---conditionally necessary standard libraries-------------------------------------------------------------------------
@@ -136,8 +136,17 @@ inline namespace seiriakos
   template<typename type>
   type deserialize(const uint8_t data[], size_t size) noexcept;
 
+  template<class base, typename ptr>
+  struct Abstraction;
+
+  template<class base, class type>
+  auto abstracted(type* base_ptr) -> Abstraction<base, type*>;
+
   inline // convert bytes to const char*
-  auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*;
+  auto hex_string(const Bytes& bytes) -> const char*;
+
+  inline // convert bytes to const char*
+  auto hex_string(const uint8_t data[], const size_t size) -> const char*;
 
   namespace _io
   {
@@ -148,6 +157,26 @@ inline namespace seiriakos
 # define SEIRIAKOS_MINOR   000
 # define SEIRIAKOS_PATCH   000
 # define SEIRIAKOS_VERSION ((SEIRIAKOS_MAJOR  * 1000 + SEIRIAKOS_MINOR) * 1000 + SEIRIAKOS_PATCH)
+//----------------------------------------------------------------------------------------------------------------------
+  template<class base, typename ptr>
+  struct Abstraction
+  {
+    static_assert(std::is_abstract<base>::value,
+      "stz: Abstraction: 'base' must be an abstract type."
+    );
+
+    static_assert(std::is_base_of<base, typename std::remove_pointer<ptr>::type>::value,
+      "stz: Abstraction: 'ptr' must be a pointer to a type derived from 'base'."
+    );
+
+    const ptr base_ptr;
+  };
+
+  template<class base, class type>
+  auto abstracted(type* const base_ptr_) -> Abstraction<base, type*>
+  {
+    return Abstraction<base, type*>{base_ptr_};
+  }
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
   {
@@ -245,7 +274,7 @@ inline namespace seiriakos
 # endif
 
     static _stz_impl_THREADLOCAL Bytes  _buffer;
-    static _stz_impl_THREADLOCAL size_t _front_of_buffer;
+    static _stz_impl_THREADLOCAL size_t _buffer_front;
 
 # if defined(STZ_DEBUGGING)
     template<typename T>
@@ -373,7 +402,56 @@ inline namespace seiriakos
       {
         serializable_._stz_impl_drz_seq();
       }
+
+      template<typename base, typename ptr>
+      static
+      void _srz_impl_on_abstracts(const Abstraction<base, ptr>& abstraction_);
+
+      template<typename base, typename ptr>
+      static
+      void _drz_impl_on_abstracts(Abstraction<base, ptr>& abstraction_);
     };
+
+    template<typename T>
+    using _if_abstract = typename std::enable_if<std::is_abstract<T>::value == true>::type;
+
+    template<typename T>
+    using _no_abstract = typename std::enable_if<std::is_abstract<T>::value != true>::type;
+    
+    template<typename base, typename ptr>
+    void _srz_impl(const Abstraction<base, ptr>& abstraction_) noexcept
+    {
+      _stz_impl_IDEBUGGING("abstract of:");
+
+      _backdoor::_srz_impl_on_abstracts(abstraction_);
+    }
+
+    template<typename base, typename ptr>
+    constexpr
+    void _drz_impl(Abstraction<base, ptr>& abstraction_) noexcept
+    {
+      _stz_impl_IDEBUGGING("abstract of:");
+
+      _backdoor::_drz_impl_on_abstracts(abstraction_);
+    }
+
+    // template<typename T>
+    // void _srz_impl(const T* const data_)
+    // {
+    //   _stz_impl_IDEBUGGING("pointer to:");
+
+    //   _srz_impl(*data_);
+    // }
+
+    // template<typename T>
+    // void _drz_impl(T* const data_)
+    // {
+    //   _stz_impl_IDEBUGGING("pointer to:");
+
+    //   // if (data_ == nullptr) data_ = new T;
+
+    //   _drz_impl(*data_);
+    // }
 
     template<typename T>
     using _if_sequence = typename std::enable_if<_backdoor::_has_seq<T>() == true>::type;
@@ -403,7 +481,8 @@ inline namespace seiriakos
     constexpr
     void _srz_impl(const T& data_, const size_t N_ = 1)
     {
-      _stz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
+      if (N_ > 1) _stz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
+      else        _stz_impl_IDEBUGGING("%s",      _underlying_name<T>());
 
       const _ltz_impl_RESTRICT auto data_ptr = reinterpret_cast<const uint8_t*>(&data_);
       _buffer.insert(_buffer.end(), data_ptr, data_ptr + sizeof(T) * N_);
@@ -413,26 +492,34 @@ inline namespace seiriakos
     _stz_impl_CONSTEXPR_CPP14
     void _drz_impl(T& data_, const size_t N_ = 1)
     {
-      _stz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
+      if (N_ > 1) _stz_impl_IDEBUGGING("%s x%zu", _underlying_name<T>(),  N_);
+      else        _stz_impl_IDEBUGGING("%s",      _underlying_name<T>());
 
       _stz_impl_SAFE(
-        if _stz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
+        if _stz_impl_ABNORMAL(_buffer_front >= _buffer.size())
         {
           return;
         }
 
-        if _stz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < (sizeof(T) * N_))
+        if _stz_impl_ABNORMAL((_buffer.size() - _buffer_front) < (sizeof(T) * N_))
         {
           return;
         }
       )
 
       // set data's bytes one by one from the front of the buffer
+#   if defined(STZ_ALLOW_CONSTCAST)
+      const auto data_ptr   = const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(&data_));
+#   else
+      static_assert(std::is_const<T>::value == false, 
+        "stz: cannot deserialize into const variables without '#define STZ_ALLOW_CONSTCAST'"
+      );
       const auto data_ptr   = reinterpret_cast<uint8_t*>(&data_);
-      const auto buffer_ptr = _buffer.data() + _front_of_buffer;
+#   endif
+      const auto buffer_ptr = _buffer.data() + _buffer_front;
       std::memcpy(data_ptr, buffer_ptr, sizeof(T) * N_);
 
-      _front_of_buffer += sizeof(T) * N_;
+      _buffer_front += sizeof(T) * N_;
     }
 
     _stz_impl_MAYBE_UNUSED
@@ -466,16 +553,16 @@ inline namespace seiriakos
       _stz_impl_IDEBUGGING("size_t");
 
       _stz_impl_SAFE(
-        if _stz_impl_ABNORMAL(_front_of_buffer >= _buffer.size())
+        if _stz_impl_ABNORMAL(_buffer_front >= _buffer.size())
         {
           return;
         }
       )
 
-      uint8_t bytes_used = _buffer[_front_of_buffer++];
+      uint8_t bytes_used = _buffer[_buffer_front++];
 
       _stz_impl_SAFE(
-        if _stz_impl_ABNORMAL((_buffer.size() - _front_of_buffer) < bytes_used)
+        if _stz_impl_ABNORMAL((_buffer.size() - _buffer_front) < bytes_used)
         {
           return;
         }
@@ -484,16 +571,10 @@ inline namespace seiriakos
       size_ = {};
       for (size_t k = 0; bytes_used; k += 8, --bytes_used)
       {
-        size_ |= (_buffer[_front_of_buffer++] << k);
+        size_ |= (_buffer[_buffer_front++] << k);
       }
 #   endif
     }
-
-    template<typename T>
-    void _srz_impl(const T* const data_) = delete;
-
-    template<typename T>
-    void _drz_impl(T* const data_) = delete;
 
     template<typename T>
     constexpr
@@ -685,6 +766,18 @@ inline namespace seiriakos
     constexpr
     void _drz_impl(std::tuple<T...>& tuple) noexcept;
 
+    template<typename base, typename ptr>
+    void _backdoor::_srz_impl_on_abstracts(const Abstraction<base, ptr>& abstraction_)
+    {
+      _srz_impl(*static_cast<const base*>(abstraction_.base_ptr));
+    }
+
+    template<typename base, typename ptr>
+    void _backdoor::_drz_impl_on_abstracts(Abstraction<base, ptr>& abstraction_)
+    {
+      _drz_impl(*static_cast<base*>(abstraction_.base_ptr));
+    }
+
     template<typename T, typename... T_>
     constexpr
     auto _sizeof_things() noexcept -> typename std::enable_if<sizeof...(T_) == 0, size_t>::type
@@ -721,56 +814,42 @@ inline namespace seiriakos
 
     struct _srz
     {
-      template<typename... T>
+      template<typename type>
       constexpr
-      _srz operator()(const T&... things_) const &
-      {
-        return _srz_dispatch(things_...), _srz();
-      }
-
-      template<typename T>
-      constexpr
-      _srz operator<=(const T& thing_) const &
+      _srz operator<=(const type& thing_) const &
       {
         return _srz_dispatch(thing_), _srz();
       }
 
-      template<typename T>
+      template<typename type>
       constexpr
-      _srz operator,(const T& thing_) const &&
+      _srz operator,(const type& thing_) const &&
       {
         return _srz_dispatch(thing_), _srz();
       }
 
-      template<typename T>
-      void operator,(T) const & = delete;
+      template<typename type>
+      void operator,(const type) const & = delete;
     };
 
     struct _drz
     {
-      template<typename... T>
+      template<typename type>
       constexpr
-      _drz operator()(T&... things_) const &
-      {
-        return _drz_dispatch(things_...), _drz();
-      }
-
-      template<typename T>
-      constexpr
-      _drz operator<=(T& thing_) const &
+      _drz operator<=(type&& thing_) const &
       {
         return _drz_dispatch(thing_), _drz();
       }
 
-      template<typename T>
+      template<typename type>
       constexpr
-      _drz operator,(T& thing_) const &&
+      _drz operator,(type& thing_) const &&
       {
         return _drz_dispatch(thing_), _drz();
       }
 
-      template<typename T>
-      void operator,(T) const & = delete;
+      template<typename type>
+      void operator,(type) const & = delete;
     };
 
     template<typename T>
@@ -1602,14 +1681,12 @@ inline namespace seiriakos
   _stz_impl_NODISCARD_REASON("serialize: ignoring the return value makes no sens.")
   auto serialize(const T&... things_) noexcept -> Bytes
   {
-    _stz_impl_DEBUGGING("----serialization summary:");
+    _stz_impl_IDEBUGGING("serialization summary:");
 
     _impl::_buffer.clear();
     _impl::_buffer.reserve(_impl::_sizeof_things<T...>());
 
     _impl::_srz_dispatch(things_...);
-
-    _stz_impl_DEBUGGING("----------------------------");
 
     return _impl::_buffer;
   }
@@ -1617,14 +1694,12 @@ inline namespace seiriakos
   template<typename... T>
   void deserialize(const uint8_t data_[], const size_t size_, T&... things_) noexcept
   {
-    _stz_impl_DEBUGGING("----deserialization summary:");
+    _stz_impl_IDEBUGGING("deserialization summary:");
 
     _impl::_buffer.assign(data_, data_ + size_);
-    _impl::_front_of_buffer = 0;
+    _impl::_buffer_front = 0;
 
     _impl::_drz_dispatch(things_...);
-
-    _stz_impl_DEBUGGING("----------------------------");
   }
 
   template<typename type>
@@ -1657,11 +1732,13 @@ inline namespace seiriakos
     private:                                             \
       void _stz_impl_srz_seq() const noexcept            \
       {                                                  \
+        _stz_impl_MAYBE_UNUSED                           \
         constexpr stz::seiriakos::_impl::_srz serialize; \
         __VA_ARGS__                                      \
       }                                                  \
       void _stz_impl_drz_seq() noexcept                  \
       {                                                  \
+        _stz_impl_MAYBE_UNUSED                           \
         constexpr stz::seiriakos::_impl::_drz serialize; \
         __VA_ARGS__                                      \
       }
@@ -1670,7 +1747,12 @@ inline namespace seiriakos
     constexpr int trivial_serialization() noexcept { return 0; }
 # define trivial_serialization(...) serialization_sequence(serialize <= __VA_ARGS__;)
 //----------------------------------------------------------------------------------------------------------------------
-  auto bytes_as_cstring(const uint8_t data[], const size_t size) -> const char*
+  auto hex_string(const Bytes& bytes_) -> const char*
+  {
+    return hex_string(bytes_.data(), bytes_.size());
+  }
+
+  auto hex_string(const uint8_t data[], const size_t size) -> const char*
   {
     static _stz_impl_THREADLOCAL std::vector<char> buffer;
 
@@ -1716,7 +1798,6 @@ inline namespace seiriakos
 #undef _stz_impl_EXPECTED
 #undef _stz_impl_ABNORMAL
 #undef _stz_impl_NODISCARD
-#undef _stz_impl_MAYBE_UNUSED
 #undef _stz_impl_NODISCARD_REASON
 #undef _stz_impl_IDEBUGGING
 #undef _stz_impl_DEBUGGING

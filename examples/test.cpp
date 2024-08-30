@@ -1,4 +1,4 @@
-#define STZ_DEBUGGING
+// #define STZ_DEBUGGING
 #define STZ_UNSAFE
 #define STZ_NOT_THREADSAFE
 // #define STZ_FIXED_LENGHT
@@ -90,7 +90,7 @@ loop:
   
   std::cin.get();
   // STZ_MEASURE_BLOCK(10, "iteration %# took %ms")
-  // STZ_MEASURE_BLOCK(100000)
+  STZ_MEASURE_BLOCK(100000)
   decoded.deserialize(binary.data(), binary.size());
 
   // std::cout << "a:   " << decoded.a.data() << '\n';

@@ -10,7 +10,15 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include/)
 set(SRZ_SOURCES_DIR ${CMAKE_CURRENT_SOURCE_DIR}/examples/)
 
-add_executable(SRZ
-  ${SRZ_SOURCES_DIR}/test.cpp
-  ${SRZ_SOURCES_DIR}/ODR.cpp
+# add_executable(SRZ
+#   ${SRZ_SOURCES_DIR}/test.cpp
+#   ${SRZ_SOURCES_DIR}/ODR.cpp
+# )
+
+# add_executable(bus
+#   ${SRZ_SOURCES_DIR}/bus.cpp
+# )
+
+add_executable(simple
+  ${SRZ_SOURCES_DIR}/simple.cpp
 )
