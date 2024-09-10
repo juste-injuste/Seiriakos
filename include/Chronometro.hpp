@@ -102,9 +102,9 @@ inline namespace chronometro
     static std::ostream out(std::cout.rdbuf()); // output
   }
 
-# define CHRONOMETRO_MAJOR   000
-# define CHRONOMETRO_MINOR   000
-# define CHRONOMETRO_PATCH   000
+# define CHRONOMETRO_MAJOR    000
+# define CHRONOMETRO_MINOR    000
+# define CHRONOMETRO_PATCH    000
 # define CHRONOMETRO_VERSION ((CHRONOMETRO_MAJOR  * 1000 + CHRONOMETRO_MINOR) * 1000 + CHRONOMETRO_PATCH)
 //----------------------------------------------------------------------------------------------------------------------
   namespace _impl
@@ -472,8 +472,8 @@ inline namespace chronometro
   private:
     Stopwatch* const _stopwatch;
 
-    Guard(Stopwatch* const stopwatch_) noexcept :
-      _stopwatch(stopwatch_)
+    Guard(Stopwatch* const stopwatch_) noexcept
+      : _stopwatch(stopwatch_)
     {
       _stopwatch->pause();
     }
@@ -667,8 +667,8 @@ inline namespace chronometro
   public:
     constexpr _iterator() noexcept = default;
 
-    _iterator(Measure* const measure_) noexcept :
-      _measure(measure_)
+    _iterator(Measure* const measure_) noexcept
+      : _measure(measure_)
     {}
 
     void operator++() const noexcept
@@ -689,32 +689,32 @@ inline namespace chronometro
     Measure* const _measure = nullptr;
   };
 //----------------------------------------------------------------------------------------------------------------------
-  Measure::Measure(const unsigned iterations_) noexcept :
-    _iterations(iterations_),
-    _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
+  Measure::Measure(const unsigned iterations_) noexcept
+    : _iterations(iterations_)
+    , _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
   {}
 
-  Measure::Measure(const unsigned iterations_, const char* const iteration_format_) noexcept :
-    _iterations(iterations_),
-    _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr),
-    _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
+  Measure::Measure(const unsigned iterations_, const char* const iteration_format_) noexcept
+    : _iterations(iterations_)
+    , _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr)
+    , _total_fmt((_iterations > 1) ? "total elapsed time: %ms [avg = %Dus]" : "total elapsed time: %ms")
   {}
 
   Measure::Measure(
     const unsigned iterations_, const char* const iteration_format_, const char* const total_format_
-  ) noexcept :
-    _iterations(iterations_),
-    _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr),
-    _total_fmt(total_format_     && *total_format_     ? total_format_     : nullptr)
+  ) noexcept
+    : _iterations(iterations_)
+    , _split_fmt(iteration_format_ && *iteration_format_ ? iteration_format_ : nullptr)
+    , _total_fmt(total_format_     && *total_format_     ? total_format_     : nullptr)
   {}
 
-  Measure::Measure(const char* const total_format_) noexcept :
-    _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
+  Measure::Measure(const char* const total_format_) noexcept
+    : _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
   {}
 
-  Measure::Measure(const char* const total_format_, const unsigned iterations_) noexcept :
-    _iterations(iterations_),
-    _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
+  Measure::Measure(const char* const total_format_, const unsigned iterations_) noexcept
+    : _iterations(iterations_)
+    , _total_fmt(total_format_ && *total_format_ ? total_format_ : nullptr)
   {}
 
   void Measure::pause() noexcept
@@ -786,9 +786,9 @@ inline namespace chronometro
     --_remaining;
   }
 //----------------------------------------------------------------------------------------------------------------------
-  Measure::Iteration::Iteration(const unsigned current_iteration_, Measure* const measurement_) noexcept :
-    value(current_iteration_),
-    _measurement(measurement_)
+  Measure::Iteration::Iteration(const unsigned current_iteration_, Measure* const measurement_) noexcept
+    : value(current_iteration_)
+    , _measurement(measurement_)
   {}
 
   void Measure::Iteration::pause() noexcept

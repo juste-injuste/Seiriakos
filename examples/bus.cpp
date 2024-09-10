@@ -11,10 +11,10 @@
 struct gps_position
 {
   gps_position() = default;
-  gps_position(const int degrees_, const int minutes_, const float seconds_) :
-    _degrees(degrees_),
-    _minutes(minutes_),
-    _seconds(seconds_)
+  gps_position(const int degrees_, const int minutes_, const float seconds_)
+    : _degrees(degrees_)
+    , _minutes(minutes_)
+    , _seconds(seconds_)
   {}
   
 private:
@@ -36,9 +36,9 @@ struct bus_stop
 
 protected:
   friend std::ostream& operator<<(std::ostream& os, const bus_stop& gp);
-  bus_stop(const gps_position& latitude_, const gps_position& longitude_) :
-    _latitude(latitude_),
-    _longitude(longitude_)
+  bus_stop(const gps_position& latitude_, const gps_position& longitude_)
+    : _latitude(latitude_)
+    , _longitude(longitude_)
   {}
 
   gps_position _latitude;
@@ -51,14 +51,12 @@ struct bus_stop_corner : public bus_stop
 {
   bus_stop_corner() = default;
   bus_stop_corner(
-    const gps_position& latitude_,
-    const gps_position& longitude_,
-    const std::string&  street1_,
-    const std::string&  street2_
-  ) :
-    bus_stop(latitude_, longitude_),
-    street1(street1_),
-    street2(street2_)
+    const gps_position& latitude_, const gps_position& longitude_,
+    const std::string&  street1_,  const std::string&  street2_
+  )
+    : bus_stop(latitude_, longitude_)
+    , street1(street1_)
+    , street2(street2_)
   {}
 
 private:
@@ -70,22 +68,18 @@ private:
     return street1 + " and " + street2;
   }
 
-  stz::serialization_sequence
+  stz::trivial_serialization
   (
-    serialize <= stz::abstracted<bus_stop>(this);
-    serialize <= street1, street2;
+    stz::base_type<bus_stop>(this), street1, street2
   )
 };
 
 struct bus_stop_destination : public bus_stop
 {
   bus_stop_destination() = default;
-  bus_stop_destination(
-    const gps_position& latitude_,
-    const gps_position& longitude_,
-    const std::string&  name_
-  ) :
-    bus_stop(latitude_, longitude_), _name(name_)
+  bus_stop_destination(const gps_position& latitude_, const gps_position& longitude_, const std::string& name_)
+    : bus_stop(latitude_, longitude_)
+    , _name(name_)
   {}
 
 private:
@@ -130,10 +124,10 @@ struct bus_schedule
   struct trip_info
   {
     trip_info() = default;
-    trip_info(int hour_, int minute_, const std::string& driver_) :
-      _hour(hour_),
-      _minute(minute_),
-      _driver(driver_)
+    trip_info(int hour_, int minute_, const std::string& driver_)
+      : _hour(hour_)
+      , _minute(minute_)
+      , _driver(driver_)
     {}
 
     int         _hour;
