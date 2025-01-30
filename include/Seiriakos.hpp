@@ -2067,7 +2067,7 @@ inline namespace seiriakos
 //*///------------------------------------------------------------------------------------------------------------------
 # undef  serialization_procedural
     constexpr int serialization_procedural() noexcept { return 0; }
-# define serialization_procedural(...)           \
+# define serialization_procedural(...)         \
       _seiriakos_impl::_backdoor friend;       \
     private:                                   \
       void _stz_impl_srz_seq() const noexcept  \

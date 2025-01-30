@@ -24,7 +24,7 @@ private:
   int   _minutes = {};
   float _seconds = {};
 
-  stz::trivial_serialization(_degrees, _minutes, _seconds)
+  stz::serialization_sequential(_degrees, _minutes, _seconds)
 };
 
 struct bus_stop
@@ -44,7 +44,7 @@ protected:
   gps_position _latitude;
   gps_position _longitude;
 
-  stz::trivial_serialization(_latitude, _longitude)
+  stz::serialization_sequential(_latitude, _longitude)
 };
 
 struct bus_stop_corner : public bus_stop
@@ -68,7 +68,7 @@ private:
     return street1 + " and " + street2;
   }
 
-  stz::trivial_serialization
+  stz::serialization_sequential
   (
     stz::base_type<bus_stop>(this), street1, street2
   )
@@ -90,10 +90,10 @@ private:
     return _name;
   }
 
-  stz::serialization_sequence
+  stz::serialization_procedural
   (
     // serialize <= dynamic_cast<bus_stop>(*this);
-    serialize <= _name;
+    serializer <= _name;
   )
 };
 
@@ -111,11 +111,11 @@ private:
 
   std::list<bus_stop*> _stops;
 
-  stz::serialization_sequence
+  stz::serialization_procedural
   (
     // ar.register_type(static_cast<bus_stop_corner*>(nullptr));
     // ar.register_type(static_cast<bus_stop_destination*>(nullptr));
-    serialize <= _stops;
+    serializer <= _stops;
   )
 };
 
@@ -136,14 +136,16 @@ struct bus_schedule
 
     friend std::ostream& operator<<(std::ostream&, const bus_schedule::trip_info&);
 
-    stz::serialization_sequence
+    stz::serialization_procedural
     (
-      // if(file_version >= 2)
-      //   ar&  driver;
+      serializer.version = 3;
 
-      // serialize <= _driver;
+      if (serializer.version >= 2)
+      {
+        serializer <= _driver;
+      }
 
-      serialize <= _hour, _minute;
+      serializer <= _hour, _minute;
     )
   };
 
@@ -159,7 +161,7 @@ private:
 
   std::list<std::pair<trip_info, bus_route*>> _schedule;
   
-  stz::trivial_serialization(_schedule)
+  stz::serialization_sequential(_schedule)
 };
 
 int main()
@@ -213,7 +215,7 @@ int main()
   schedule_to_serialize.append("alice", 11, 47, &route1);
 
   // std::cout << "original schedule" << schedule_to_serialize;
-  stz::seiriakos::_impl::_srz_impl(route0);
+  stz::seiriakos::_seiriakos_impl::_srz_impl(route0);
 
   auto binary       = stz::serialize(schedule_to_serialize);
   auto new_schedule = stz::deserialize<bus_schedule>(binary.data(), binary.size());

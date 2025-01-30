@@ -23,18 +23,7 @@ private:
 
 struct Color
 {
-  enum Basic : uint8_t
-  {
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    White,
-    Gray
-  };
+  enum Basic : uint8_t { Black, Red, Green, Yellow, Blue,  Magenta, Cyan,  White, Gray };
 
   Color(const Basic basic_);
   Color(uint8_t R, uint8_t G, uint8_t B);
@@ -73,8 +62,7 @@ struct Chair
   Chair() = default;
   Chair(Type type_, Color color_) : type(type_), color(color_) {}
 
-  Type type;
-
+  Type  type  = Type::Stool;
   Color color = Color::Basic::Black;
 
   stz::serialization_sequential(type, color);
@@ -85,8 +73,8 @@ struct Person
   Person() = default;
   Person(const char* string, Color color) : name(string), hair(color) {}
 
-  std::string name     = "n/a";
-  Color       hair     = Color::Basic::Black;
+  std::string name = "n/a";
+  Color       hair = Color::Basic::Black;
   unsigned    age  : 9;
 
   stz::serialization_sequential(name, hair, stz::bitfield<9>(age))
@@ -103,7 +91,7 @@ struct Bar : private Building
     std::cout << "  seats: " << seats.size() << '\n';
   }
 
-  Person owner;
+  Person             owner;
   std::vector<Chair> seats;
 
   stz::serialization_sequential(stz::base_type<Building>(this), seats, owner)
@@ -112,19 +100,23 @@ struct Bar : private Building
 int main()
 {
 
-  Person     John("John Pilcrow",   Color(65, 53, 50));
-  Chair     stool(Chair::Stool,     Color::Black);
+  Person     John("John Pilcrow"  , Color( 65, 53, 50));
+  Chair     stool(Chair::Stool    , Color::Black      );
   Chair banquette(Chair::Banquette, Color(113, 47, 62));
 
   Bar bar;
 
   bar.owner = John;
 
-  STZ_LOOP_FOR_N(16)
-  bar.seats.push_back(stool);
+  stz::loop_n_times(16)
+  {
+    bar.seats.push_back(stool);
+  };
 
-  STZ_LOOP_FOR_N(8)
-  bar.seats.push_back(banquette);
+  stz::loop_n_times(8)
+  {
+    bar.seats.push_back(banquette);
+  };
 
   auto binary = stz::serialize(bar);
   auto copy   = stz::deserialize<Bar>(binary.data(), binary.size());
